@@ -37,8 +37,7 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
-import DTM from './DTM';
 
-export default {
-    DTM,
-};
+const DTM = require('../dist/nrf-dtm');
+
+const dtm = new DTM.DTM('/dev/ttyACM0');

@@ -37,3 +37,39 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
+
+import SerialPort from 'serialport';
+
+export default class DTM {
+    constructor(comName) {
+        this.port = SerialPort(comName, { autoOpen: false });
+        this.open();
+    }
+
+    onData() {
+        console.log(data);
+    }
+
+    addListeners() {
+        this.port.on('data', data => {
+            switch(data) {
+                case '':
+                    return;
+                default:
+                    this.onData(data);
+            }
+        });
+    }
+
+    open() {
+        this.port.open(() => {});
+    }
+
+    close() {
+        this.port.close(() => {});
+    }
+
+    send(bytes) {
+        this.port.write(bytes);
+    }
+}

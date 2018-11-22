@@ -1,12 +1,12 @@
 {
-  "name": "pc-nrf-dfu-js",
-  "version": "0.2.7",
-  "description": "JS implementation of the nRF DFU protocol",
+  "name": "nrf-dtm-js",
+  "version": "0.0.1",
+  "description": "JS implementation of the nRF DTM",
   "esnext:main": "src/index.js",
-  "main": "dist/nrf-dfu.cjs.js",
+  "main": "dist/nrf-dtm.js",
   "module": "src/index.js",
   "browser": "dist/nrf-dfu.browser.js",
-  "author": "Iván Sánchez Ortega <ivan@sanchezortega.es>",
+  "author": "",
   "license": "Propietary",
   "scripts": {
     "rollup": "rollup -c rollup.config.js",
@@ -14,10 +14,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "jest": "^23.6.0",
     "serialport": "^6.2.0"
   },
-  "peerDependencies": {
-  },
+  "peerDependencies": {},
   "devDependencies": {
     "debug": "^3.1.0",
     "eslint": "^4.15.0",
@@ -30,7 +30,7 @@
     "rollup-plugin-eslint": "^4.0.0",
     "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-node-globals": "^1.1.0",
-    "rollup-plugin-node-resolve": "^3.0.0",
+    "rollup-plugin-node-resolve": "^3.0.0"
   },
   "jest": {
     "testMatch": [
