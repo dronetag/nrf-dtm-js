@@ -40,29 +40,38 @@
 
 import SerialPort from 'serialport';
 
-export default class DTM {
+class DTM {
     constructor(comName) {
-        this.port = SerialPort(comName, { autoOpen: false });
+        this.port = new SerialPort(comName, { autoOpen: false });
+        this.addListeners();
         this.open();
     }
 
-    onData() {
+    onData(data) {
         console.log(data);
     }
 
     addListeners() {
         this.port.on('data', data => {
-            switch(data) {
+            console.log(data);
+            switch (data) {
                 case '':
                     return;
                 default:
                     this.onData(data);
             }
         });
+        this.port.on('error', error => {
+            console.log(error);
+        })
+        this.port.on('open', console.log);
     }
 
     open() {
-        this.port.open(() => {});
+        this.port.open(() => {
+            console.log('opened');
+            this.send([0x00, 0x00]);
+        });
     }
 
     close() {
@@ -73,3 +82,5 @@ export default class DTM {
         this.port.write(bytes);
     }
 }
+
+export default DTM;

@@ -40,4 +40,4 @@
 
 const DTM = require('../dist/nrf-dtm');
 
-const dtm = new DTM.DTM('/dev/ttyACM0');
+const dtm = new DTM.DTM('/dev/tty.usbmodem000683281652');
