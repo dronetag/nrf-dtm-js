@@ -43,6 +43,26 @@ import Debug from 'debug';
 
 const debug = Debug('dtm');
 
+const CMD = {
+    TEST_SETUP: '00',
+    RECEIVER_TEST: '01',
+    TRANSMITTER_TEST: '10',
+    TEST_END: '11',
+};
+
+const SETUP_CMD ={
+    RESET: '0',
+    ENABLE_LENGTH: '1',
+    PHY: '2',
+    MODULATION: '3',
+    FEATURES: '4',
+    TXRX: '5',
+ }
+
+const getFrequencyValue = f => {
+    return ((f - 2402) / 2).toString(2);
+};
+
 class DTM {
     constructor(comName) {
         this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
