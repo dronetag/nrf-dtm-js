@@ -39,26 +39,35 @@
  */
 
 import SerialPort from 'serialport';
+import Debug from 'debug';
+
+const debug = Debug('dtm');
 
 class DTM {
     constructor(comName) {
-        this.port = new SerialPort(comName, { autoOpen: false });
+        this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
         this.addListeners();
         this.open();
     }
 
-    onData(data) {
-        console.log(data);
-    }
-
     addListeners() {
         this.port.on('data', data => {
-            console.log(data);
-            switch (data) {
-                case '':
-                    return;
-                default:
-                    this.onData(data);
+            if (this.callback) {
+                if (data.length === 1) {
+                    if (this.dataBuffer) {
+                        this.dataBuffer = Buffer.concat([this.dataBuffer, data]);
+                        this.callback(this.dataBuffer);
+                        this.dataBuffer = undefined;
+                    } else {
+                        this.dataBuffer = data;
+                    }
+                } else if (data.length === 2) {
+                    this.callback(data);
+                } else {
+                    debug('Unexpected data length: ', data.length);
+                }
+            } else {
+                debug('Unhandled data: ', data);
             }
         });
         this.port.on('error', error => {
@@ -70,7 +79,6 @@ class DTM {
     open() {
         this.port.open(() => {
             console.log('opened');
-            this.send([0x00, 0x00]);
         });
     }
 
@@ -80,6 +88,42 @@ class DTM {
 
     send(bytes) {
         this.port.write(bytes);
+    }
+
+    reset() {
+        this.send([0x00, 0x00]);
+        return new Promise(res => {
+            this.callback = data => {
+                console.log('callback');
+                this.callback = undefined;
+                debug(data);
+                res(data);
+            };
+        });
+    }
+
+    start() {
+        this.send([0x50, 0x00]);
+        return new Promise(res => {
+            this.callback = data => {
+                console.log('start');
+                this.callback = undefined;
+                debug(data);
+                res(data);
+            };
+        });
+    }
+
+    stop() {
+        this.send([0xC0, 0x00]);
+        return new Promise(res => {
+            this.callback = data => {
+                console.log('start');
+                this.callback = undefined;
+                debug(data);
+                res(data);
+            };
+        });
     }
 }
 

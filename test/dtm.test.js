@@ -41,3 +41,11 @@
 const DTM = require('../dist/nrf-dtm');
 
 const dtm = new DTM.DTM('/dev/tty.usbmodem000683281652');
+
+const go = async () => {
+    await dtm.reset();
+    await dtm.start();
+    setTimeout(async () => await dtm.stop(), 5000);
+}
+
+go();
