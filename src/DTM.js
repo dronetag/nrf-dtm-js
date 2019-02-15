@@ -50,16 +50,17 @@ const CMD = {
     TEST_END: '11',
 };
 
-const SETUP_CMD ={
+const SETUP_CMD = {
     RESET: '0',
     ENABLE_LENGTH: '1',
     PHY: '2',
     MODULATION: '3',
     FEATURES: '4',
     TXRX: '5',
- }
+};
 
 const getFrequencyValue = f => {
+    console.log('test');
     return ((f - 2402) / 2).toString(2);
 };
 
@@ -92,7 +93,7 @@ class DTM {
         });
         this.port.on('error', error => {
             console.log(error);
-        })
+        });
         this.port.on('open', console.log);
     }
 
@@ -123,7 +124,7 @@ class DTM {
     }
 
     start() {
-        this.send([0x50, 0x00]);
+        this.send([0x80, 0x94]);
         return new Promise(res => {
             this.callback = data => {
                 console.log('start');
