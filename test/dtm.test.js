@@ -41,12 +41,20 @@
 const DTM = require('../dist/nrf-dtm');
 
 // const dtm = new DTM.DTM('/dev/tty.usbmodem000683281652');
-const dtm = new DTM.DTM('COM42');
+// const dtm = new DTM.DTM('/dev/tty.usbmodem0006836256351');
 
 const go = async () => {
-    await dtm.reset();
-    await dtm.start();
-    setTimeout(async () => await dtm.stop(), 5000);
+    const result = await dtm.reset();
+    console.log(result);
+    // await dtm.start();
+    // setTimeout(async () => await dtm.stop(), 5000);
 }
 
-go();
+// go();
+
+describe('Frequency test', () => {
+    it('Should be 000000', () => {
+        expect(DTM.DTM_FREQUENCY(2402)).toBe('000000');
+        expect(DTM.DTM_FREQUENCY(2480)).toBe('100111');
+    });
+});

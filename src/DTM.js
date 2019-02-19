@@ -43,26 +43,37 @@ import Debug from 'debug';
 
 const debug = Debug('dtm');
 
-const CMD = {
+// 2 bits
+const DTM_CMD= {
     TEST_SETUP: '00',
     RECEIVER_TEST: '01',
     TRANSMITTER_TEST: '10',
     TEST_END: '11',
 };
 
-const SETUP_CMD = {
-    RESET: '0',
-    ENABLE_LENGTH: '1',
-    PHY: '2',
-    MODULATION: '3',
-    FEATURES: '4',
-    TXRX: '5',
+// 6 bits
+const DTM_CONTRAL = {
+    RESET: '000000',
+    ENABLE_LENGTH: '000001',
+    PHY: '000010',
+    MODULATION: '000011',
+    FEATURES: '000100',
+    TXRX: '000101',
 };
 
-const getFrequencyValue = f => {
+// 6 bits
+const DTM_FREQUENCY = f => {
     console.log('test');
-    return ((f - 2402) / 2).toString(2);
+    return ((f - 2402) / 2).toString(2).padStart(6, '0');
 };
+
+// 2 bits
+const DTM_PKT = {
+    PAYLOAD_PRBS9: '00',
+    PAYLOAD_11110000: '01',
+    PAYLOAD_10101010: '10',
+    PAYLOAD_VENDER: '11',
+}
 
 class DTM {
     constructor(comName) {
@@ -94,7 +105,9 @@ class DTM {
         this.port.on('error', error => {
             console.log(error);
         });
-        this.port.on('open', console.log);
+        this.port.on('open', () => {
+            console.log('open');
+        });
     }
 
     open() {
@@ -107,12 +120,8 @@ class DTM {
         this.port.close(() => {});
     }
 
-    send(bytes) {
+    sendCMD(bytes) {
         this.port.write(bytes);
-    }
-
-    reset() {
-        this.send([0x00, 0x00]);
         return new Promise(res => {
             this.callback = data => {
                 console.log('callback');
@@ -123,29 +132,22 @@ class DTM {
         });
     }
 
+    async reset() {
+        return await this.sendCMD([0x20, 0x00]);
+    }
+
     start() {
-        this.send([0x80, 0x94]);
-        return new Promise(res => {
-            this.callback = data => {
-                console.log('start');
-                this.callback = undefined;
-                debug(data);
-                res(data);
-            };
-        });
+        this.sendCMD([0x80, 0x94]);
     }
 
     stop() {
-        this.send([0xC0, 0x00]);
-        return new Promise(res => {
-            this.callback = data => {
-                console.log('start');
-                this.callback = undefined;
-                debug(data);
-                res(data);
-            };
-        });
+        this.sendCMD([0xC0, 0x00]);
     }
 }
 
-export default DTM;
+export {
+    DTM,
+    DTM_CMD,
+    DTM_CONTRAL,
+    DTM_FREQUENCY,
+};
