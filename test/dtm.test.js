@@ -41,7 +41,7 @@
 const DTM = require('../dist/nrf-dtm');
 
 // const dtm = new DTM.DTM('/dev/tty.usbmodem000683281652');
-// const dtm = new DTM.DTM('/dev/tty.usbmodem0006836256351');
+const dtm = new DTM.DTM('/dev/tty.usbmodem0006836256351');
 
 const go = async () => {
     const result = await dtm.reset();
@@ -56,5 +56,15 @@ describe('Frequency test', () => {
     it('Should be 000000', () => {
         expect(DTM.DTM_FREQUENCY(2402)).toBe('000000');
         expect(DTM.DTM_FREQUENCY(2480)).toBe('100111');
+    });
+});
+
+describe('Command test', () => {
+    it(`Should be ['0F', '0F']`, () => {
+        expect(DTM.DTM_CMD_FORMAT('0000111100001111')).toEqual(['0f', '0f']);
+    });
+
+    it(`Should be ['C0', '00']`, () => {
+        expect(dtm.createEndCMD()).toEqual(['c0', '00']);
     });
 });

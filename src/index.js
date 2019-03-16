@@ -37,11 +37,6 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
-import { DTM, DTM_CMD, DTM_CONTRAL, DTM_FREQUENCY } from './DTM';
+import * as DTM from './DTM';
 
-export default {
-    DTM,
-    DTM_CMD,
-    DTM_CONTRAL,
-    DTM_FREQUENCY,
-};
+export default DTM;
