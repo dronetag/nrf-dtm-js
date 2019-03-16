@@ -99,7 +99,6 @@ class DTM {
     constructor(comName) {
         this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
         this.addListeners();
-        this.open();
     }
 
     addListeners() {
@@ -128,16 +127,31 @@ class DTM {
         this.port.on('open', () => {
             console.log('open');
         });
+        this.port.on('close', () => {
+            console.log('close');
+        });
     }
 
     open() {
-        this.port.open(() => {
-            console.log('opened');
+        return new Promise(res => {
+            this.port.open(err => {
+                if (err) {
+                    throw err;
+                }
+                res();
+            });
         });
     }
 
     close() {
-        this.port.close(() => {});
+        return new Promise(res => {
+            this.port.close(err => {
+                if (err) {
+                    throw err;
+                }
+                res();
+            });
+        });
     }
 
     createCMD(cmdType, arg2, arg3, arg4) {
@@ -202,33 +216,23 @@ class DTM {
     createReceiverCMD(
         frequency = DTM_FREQUENCY(2402),
         length = DTM_LENGTH(0),
-        pkt = DTM_PKT.DEFAULT
+        pkt = DTM_PKT.DEFAULT,
     ) {
         return this.createCMD(DTM_CMD.RECEIVER_TEST + frequency + length + pkt);
     }
 
     sendCMD(bytes) {
-        this.port.write(bytes);
-        return new Promise(res => {
+        return new Promise(async res => {
+            await this.open();
+            this.port.write(bytes);
             this.callback = data => {
                 console.log('callback');
                 this.callback = undefined;
+                this.close();
                 debug(data);
                 res(data);
             };
         });
-    }
-
-    async reset() {
-        return this.sendCMD([0x20, 0x00]);
-    }
-
-    start() {
-        this.sendCMD([0x80, 0x94]);
-    }
-
-    stop() {
-        this.sendCMD([0xC0, 0x00]);
     }
 }
 
