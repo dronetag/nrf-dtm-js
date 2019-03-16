@@ -44,7 +44,7 @@ import Debug from 'debug';
 const debug = Debug('dtm');
 
 // 2 bits
-const DTM_CMD= {
+const DTM_CMD = {
     TEST_SETUP: '00',
     RECEIVER_TEST: '01',
     TRANSMITTER_TEST: '10',
@@ -66,18 +66,14 @@ const DTM_CONTROL = {
 };
 
 // 6 bits
-const DTM_FREQUENCY = f => {
-    return ((f - 2402) / 2).toString(2).padStart(6, '0');
-};
+const DTM_FREQUENCY = f => ((f - 2402) / 2).toString(2).padStart(6, '0');
 
 const DTM_PARAMETER = {
     DEFAULT: '000000',
 };
 
 // 6 bits
-const DTM_LENGTH = l => {
-    return l.toString(2).padStart(6, '0');
-};
+const DTM_LENGTH = l => l.toString(2).padStart(6, '0');
 
 // 2 bits
 const DTM_PKT = {
@@ -151,19 +147,30 @@ class DTM {
     /**
      * Create setup command
      *
-     * @param {DTM_CONTROL} control
-     * @param {DTM_PARAMETER} paramter
-     * @param {DTM_DC} dc
+     * @param {DTM_CONTROL} control the control to set
+     * @param {DTM_PARAMETER} parameter the parameter to set
+     * @param {DTM_DC} dc the dc to set
+     *
+     * @returns {createCMD} created command
      */
-    createSetupCMD(control = DTM_CONTROL.RESET, paramter = DTM_PARAMETER.DEFAULT, dc = DTM_DC.DEFAULT) {
-        return this.createCMD(DTM_CMD.TEST_SETUP + control + paramter + dc);
+    createSetupCMD(
+        control = DTM_CONTROL.RESET,
+        parameter = DTM_PARAMETER.DEFAULT,
+        dc = DTM_DC.DEFAULT,
+    ) {
+        return this.createCMD(DTM_CMD.TEST_SETUP + control + parameter + dc);
     }
 
     /**
      * Create end command
+     *
+     * @returns {createCMD} created command
      */
     createEndCMD() {
-        return this.createCMD(DTM_CMD.TEST_END + DTM_CONTROL.END + DTM_PARAMETER.DEFAULT + DTM_DC.DEFAULT);
+        return this.createCMD(DTM_CMD.TEST_END
+            + DTM_CONTROL.END
+            + DTM_PARAMETER.DEFAULT
+            + DTM_DC.DEFAULT);
     }
 
     /**
@@ -172,8 +179,14 @@ class DTM {
      * @param {DTM_FREQUENCY} frequency the frequency to set
      * @param {DTM_LENGTH} length the length to set
      * @param {DTM_PKT} pkt the pkt to set
+     *
+     * @returns {createCMD} created command
      */
-    createTransmitterCMD(frequency = DTM_FREQUENCY(2402), length = DTM_LENGTH(0), pkt = DTM_PKT.DEFAULT) {
+    createTransmitterCMD(
+        frequency = DTM_FREQUENCY(2402),
+        length = DTM_LENGTH(0),
+        pkt = DTM_PKT.DEFAULT,
+    ) {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + frequency + length + pkt);
     }
 
@@ -183,8 +196,14 @@ class DTM {
      * @param {DTM_FREQUENCY} frequency the frequency to set
      * @param {DTM_LENGTH} length the length to set
      * @param {DTM_PKT} pkt the pkt to set
+     *
+     * @returns {createCMD} created command
      */
-    createReceiverCMD(frequency = DTM_FREQUENCY(2402), length = DTM_LENGTH(0), pkt = DTM_PKT.DEFAULT) {
+    createReceiverCMD(
+        frequency = DTM_FREQUENCY(2402),
+        length = DTM_LENGTH(0),
+        pkt = DTM_PKT.DEFAULT
+    ) {
         return this.createCMD(DTM_CMD.RECEIVER_TEST + frequency + length + pkt);
     }
 
@@ -201,7 +220,7 @@ class DTM {
     }
 
     async reset() {
-        return await this.sendCMD([0x20, 0x00]);
+        return this.sendCMD([0x20, 0x00]);
     }
 
     start() {
