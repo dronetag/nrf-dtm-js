@@ -40,7 +40,7 @@
 
 const DTM = require('../dist/nrf-dtm');
 
-const dtm = new DTM.DTM('/dev/tty.usbmodem0006836256351');
+const dtm = new DTM.DTM('/dev/tty.usbmodem0006832816521');
 
 describe('DTM utility test', () => {
     it('Frequency should be 000000', () => {
@@ -54,19 +54,31 @@ describe('DTM utility test', () => {
 });
 
 describe('Command test', () => {
-    it(`Setup command hould be ['00', '00']`, () => {
+    it(`Setup command should be ['00', '00']`, () => {
         expect(dtm.createSetupCMD()).toEqual(['00', '00']);
     });
 
-    it(`Transmitter command hould be ['80', '00']`, () => {
+    it(`Transmitter command should be ['80', '00']`, () => {
         expect(dtm.createTransmitterCMD()).toEqual(['80', '00']);
     });
 
-    it(`Receiver command hould be ['40', '00']`, () => {
+    it(`Receiver command should be ['40', '00']`, () => {
         expect(dtm.createReceiverCMD()).toEqual(['40', '00']);
     });
 
     it(`End command hould be ['C0', '00']`, () => {
         expect(dtm.createEndCMD()).toEqual(['c0', '00']);
+    });
+});
+
+describe('Sending command test', () => {
+    it(`Return value should be ['00', '00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createSetupCMD())).toEqual(Buffer(['00', '00']));
+    });
+    it(`Return value should be ['00', '00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createTransmitterCMD())).toEqual(Buffer(['00', '00']));
+    });
+    it(`Return value should be ['00', '00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createEndCMD())).toEqual(Buffer(['00', '00']));
     });
 });

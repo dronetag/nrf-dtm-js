@@ -103,6 +103,7 @@ class DTM {
 
     addListeners() {
         this.port.on('data', data => {
+            debug(data);
             if (this.callback) {
                 if (data.length === 1) {
                     if (this.dataBuffer) {
@@ -122,13 +123,13 @@ class DTM {
             }
         });
         this.port.on('error', error => {
-            console.log(error);
+            debug(error);
         });
         this.port.on('open', () => {
-            console.log('open');
+            debug('open');
         });
         this.port.on('close', () => {
-            console.log('close');
+            debug('close');
         });
     }
 
@@ -155,6 +156,7 @@ class DTM {
     }
 
     createCMD(cmdType, arg2, arg3, arg4) {
+        debug(this);
         return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
     }
 
@@ -226,7 +228,6 @@ class DTM {
             await this.open();
             this.port.write(bytes);
             this.callback = data => {
-                console.log('callback');
                 this.callback = undefined;
                 this.close();
                 debug(data);
