@@ -148,15 +148,19 @@ class DTM {
         return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
     }
 
+    /**
+     * Create setup command
+     *
+     * @param {DTM_CONTROL} control
+     * @param {DTM_PARAMETER} paramter
+     * @param {DTM_DC} dc
+     */
     createSetupCMD(control = DTM_CONTROL.RESET, paramter = DTM_PARAMETER.DEFAULT, dc = DTM_DC.DEFAULT) {
         return this.createCMD(DTM_CMD.TEST_SETUP + control + paramter + dc);
     }
 
     /**
-     * Create transmitter command
-     * @param {DTM_FREQUENCY} frequency the frequency to set
-     * @param {DTM_LENGTH} length the length to set
-     * @param {DTM_PKT} pkt the pkt to set
+     * Create end command
      */
     createEndCMD() {
         return this.createCMD(DTM_CMD.TEST_END + DTM_CONTROL.END + DTM_PARAMETER.DEFAULT + DTM_DC.DEFAULT);
@@ -164,6 +168,7 @@ class DTM {
 
     /**
      * Create transmitter command
+     *
      * @param {DTM_FREQUENCY} frequency the frequency to set
      * @param {DTM_LENGTH} length the length to set
      * @param {DTM_PKT} pkt the pkt to set
@@ -174,6 +179,7 @@ class DTM {
 
     /**
      * Create receiver command
+     *
      * @param {DTM_FREQUENCY} frequency the frequency to set
      * @param {DTM_LENGTH} length the length to set
      * @param {DTM_PKT} pkt the pkt to set
