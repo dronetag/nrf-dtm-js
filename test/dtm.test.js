@@ -58,6 +58,14 @@ describe('Command test', () => {
         expect(dtm.createSetupCMD()).toEqual(['00', '00']);
     });
 
+    it(`Transmitter command hould be ['80', '00']`, () => {
+        expect(dtm.createTransmitterCMD()).toEqual(['80', '00']);
+    });
+
+    it(`Receiver command hould be ['40', '00']`, () => {
+        expect(dtm.createReceiverCMD()).toEqual(['40', '00']);
+    });
+
     it(`End command hould be ['C0', '00']`, () => {
         expect(dtm.createEndCMD()).toEqual(['c0', '00']);
     });
