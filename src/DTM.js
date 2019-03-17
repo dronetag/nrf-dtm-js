@@ -92,7 +92,7 @@ const DTM_DC = {
 const DTM_CMD_FORMAT = cmd => {
     const firstByte = parseInt(cmd.substring(0, 8), 2).toString(16).padStart(2, '0');
     const secondByte = parseInt(cmd.substring(8, 16), 2).toString(16).padStart(2, '0');
-    return [firstByte, secondByte];
+    return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
 };
 
 class DTM {

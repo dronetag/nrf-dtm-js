@@ -48,37 +48,37 @@ describe('DTM utility test', () => {
         expect(DTM.DTM_FREQUENCY(2480)).toBe('100111');
     });
     it(`Command format should be ['0F', '0F']`, () => {
-        expect(DTM.DTM_CMD_FORMAT('0000111100001111')).toEqual(['0f', '0f']);
+        expect(DTM.DTM_CMD_FORMAT('0000111100001111')).toEqual(Buffer.from(['0x0f', '0x0f']));
     });
 
 });
 
 describe('Command test', () => {
-    it(`Setup command should be ['00', '00']`, () => {
-        expect(dtm.createSetupCMD()).toEqual(['00', '00']);
+    it(`Setup command should be ['0x00', '0x00']`, () => {
+        expect(dtm.createSetupCMD()).toEqual(Buffer.from(['0x00', '0x00']));
     });
 
-    it(`Transmitter command should be ['80', '00']`, () => {
-        expect(dtm.createTransmitterCMD()).toEqual(['80', '00']);
+    it(`Transmitter command should be ['0x80', '0x00']`, () => {
+        expect(dtm.createTransmitterCMD()).toEqual(Buffer.from(['0x80', '0x00']));
     });
 
-    it(`Receiver command should be ['40', '00']`, () => {
-        expect(dtm.createReceiverCMD()).toEqual(['40', '00']);
+    it(`Receiver command should be ['0x40', '0x00']`, () => {
+        expect(dtm.createReceiverCMD()).toEqual(Buffer.from(['0x40', '0x00']));
     });
 
-    it(`End command hould be ['C0', '00']`, () => {
-        expect(dtm.createEndCMD()).toEqual(['c0', '00']);
+    it(`End command hould be ['0xC0', '0x00']`, () => {
+        expect(dtm.createEndCMD()).toEqual(Buffer.from(['0xc0', '0x00']));
     });
 });
 
 describe('Sending command test', () => {
-    it(`Return value should be ['00', '00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createSetupCMD())).toEqual(Buffer(['00', '00']));
+    it(`Return value should be ['0x00', '0x00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createSetupCMD())).toEqual(Buffer.from(['0x00', '0x00']));
     });
-    it(`Return value should be ['00', '00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createTransmitterCMD())).toEqual(Buffer(['00', '00']));
+    it(`Return value should be ['0x00', '0x00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createTransmitterCMD())).toEqual(Buffer.from(['0x00', '0x00']));
     });
-    it(`Return value should be ['00', '00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createEndCMD())).toEqual(Buffer(['00', '00']));
+    it(`Return value should be ['0x00', '0x00']`, async () => {
+        expect(await dtm.sendCMD(dtm.createEndCMD())).toEqual(Buffer.from(['0x80', '0x00']));
     });
 });
