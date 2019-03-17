@@ -223,10 +223,10 @@ class DTM {
         return this.createCMD(DTM_CMD.RECEIVER_TEST + frequency + length + pkt);
     }
 
-    sendCMD(bytes) {
+    sendCMD(cmd) {
         return new Promise(async res => {
             await this.open();
-            this.port.write(bytes);
+            this.port.write(cmd);
             this.callback = data => {
                 this.callback = undefined;
                 this.close();
