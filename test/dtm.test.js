@@ -40,8 +40,8 @@
 
 const DTM = require('../dist/nrf-dtm');
 
-const dtm = new DTM.DTM('/dev/tty.usbmodem0006832816521');
-
+const dtm = new DTM.DTM('COM31');
+/*
 describe('DTM utility test', () => {
     it('Frequency should be 000000', () => {
         expect(DTM.DTM_FREQUENCY(2402)).toBe('000000');
@@ -52,33 +52,95 @@ describe('DTM utility test', () => {
     });
 
 });
+*/
 
 describe('Command test', () => {
     it(`Setup command should be ['0x00', '0x00']`, () => {
-        expect(dtm.createSetupCMD()).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(dtm.dtmTransport.createSetupCMD()).toEqual(Buffer.from(['0x00', '0x00']));
     });
 
     it(`Transmitter command should be ['0x80', '0x00']`, () => {
-        expect(dtm.createTransmitterCMD()).toEqual(Buffer.from(['0x80', '0x00']));
+        expect(dtm.dtmTransport.createTransmitterCMD()).toEqual(Buffer.from(['0x80', '0x00']));
     });
 
     it(`Receiver command should be ['0x40', '0x00']`, () => {
-        expect(dtm.createReceiverCMD()).toEqual(Buffer.from(['0x40', '0x00']));
+        expect(dtm.dtmTransport.createReceiverCMD()).toEqual(Buffer.from(['0x40', '0x00']));
     });
 
     it(`End command hould be ['0xC0', '0x00']`, () => {
-        expect(dtm.createEndCMD()).toEqual(Buffer.from(['0xc0', '0x00']));
+        expect(dtm.dtmTransport.createEndCMD()).toEqual(Buffer.from(['0xc0', '0x00']));
     });
 });
 
 describe('Sending command test', () => {
     it(`Return value should be ['0x00', '0x00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createSetupCMD())).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.dtmTransport.sendCMD(dtm.dtmTransport.createSetupCMD())).toEqual(Buffer.from(['0x00', '0x00']));
     });
     it(`Return value should be ['0x00', '0x00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createTransmitterCMD())).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.dtmTransport.sendCMD(dtm.dtmTransport.createTransmitterCMD())).toEqual(Buffer.from(['0x00', '0x00']));
     });
     it(`Return value should be ['0x00', '0x00']`, async () => {
-        expect(await dtm.sendCMD(dtm.createEndCMD())).toEqual(Buffer.from(['0x80', '0x00']));
+        expect(await dtm.dtmTransport.sendCMD(dtm.dtmTransport.createEndCMD())).toEqual(Buffer.from(['0x80', '0x00']));
     });
+});
+
+describe('Setup test', () => {
+    it(`Setup reset succeeds`, async () => {
+        expect(await dtm.setupReset()).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+
+    it(`Setup short packet length`, async () => {
+        expect(await dtm.setupLength(0x01)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+    it(`Setup long packet length`, async () => {
+        expect(await dtm.setupLength(0x40)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+    it(`Setup packet lengths longer than 0xFF will fail`, async () => {
+        expect(await dtm.setupLength(0x100)).toEqual(Buffer.from(['0x00', '0x01']));
+    });
+
+    it(`Uncoded phy LE is supported`, async () => {
+        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_2M)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+
+    it(`Coded phy LE is supported on nRF52840`, async () => {
+        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_CODED_S8)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_CODED_S2)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+
+    it(`Setup modulation index`, async () => {
+        expect(await dtm.setupModulation(dtm.DTM_PARAMETER.STANDARD_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupModulation(dtm.DTM_PARAMETER.STABLE_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+
+    it(`Read features`, async () => {
+        const readFeatures = async () => {
+            const buffer = await dtm.setupReadFeatures()
+            buffer[0] &= 0x01; // LE_Test_Status_Event
+            buffer[1] &= 0x80; // Success
+            return buffer
+        };
+        expect(await readFeatures()).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+
+    it(`Set TX power`, async () => {
+        expect(await dtm.setTxPower(-40)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setTxPower(-80)).toEqual(Buffer.from(['0x00', '0x01']));
+        expect(await dtm.setTxPower(-4)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setTxPower(0)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setTxPower(4)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setTxPower(9)).toEqual(Buffer.from(['0x00', '0x01']));
+    });
+/*
+    it(`Read TXRX`, async () => {
+        const readSupportedRxTx = async param => {
+            const buffer = await dtm.setupReadSupportedRxTx(param)
+            buffer[0] &= 0x01; // LE_Test_Status_Event
+            buffer[1] &= 0x80; // Success
+            return buffer
+        };
+        expect(await readSupportedRxTx(dtm.DTM_PARAMETER.SUPPORTED_MAX_TX_TIME)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
+*/
 });

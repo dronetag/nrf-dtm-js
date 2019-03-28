@@ -38,209 +38,265 @@
  *
  */
 
-import SerialPort from 'serialport';
-import Debug from 'debug';
+import {
+    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY,
+} from './DTM_transport';
 
-const debug = Debug('dtm');
+function channelToFrequency(channel) {
+    return 2402 + 2 * channel;
+}
 
-// 2 bits
-const DTM_CMD = {
-    TEST_SETUP: '00',
-    RECEIVER_TEST: '01',
-    TRANSMITTER_TEST: '10',
-    TEST_END: '11',
-};
-
-// 6 bits
-const DTM_CONTROL = {
-    // Test setup cmd
-    RESET: '000000',
-    ENABLE_LENGTH: '000001',
-    PHY: '000010',
-    MODULATION: '000011',
-    FEATURES: '000100',
-    TXRX: '000101',
-
-    // Test end cmd
-    END: '000000',
-};
-
-// 6 bits
-const DTM_FREQUENCY = f => ((f - 2402) / 2).toString(2).padStart(6, '0');
-
-const DTM_PARAMETER = {
-    DEFAULT: '000000',
-};
-
-// 6 bits
-const DTM_LENGTH = l => l.toString(2).padStart(6, '0');
-
-// 2 bits
-const DTM_PKT = {
-    DEFAULT: '00',
-    PAYLOAD_PRBS9: '00',
-    PAYLOAD_11110000: '01',
-    PAYLOAD_10101010: '10',
-    PAYLOAD_VENDER: '11',
-};
-
-// 2 bits
-const DTM_DC = {
-    DEFAULT: '00',
-};
-
-const DTM_CMD_FORMAT = cmd => {
-    const firstByte = parseInt(cmd.substring(0, 8), 2).toString(16).padStart(2, '0');
-    const secondByte = parseInt(cmd.substring(8, 16), 2).toString(16).padStart(2, '0');
-    return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
-};
+function reportSuccess(report) {
+    return (report[0] & 0x01) === 0;
+}
 
 class DTM {
-    constructor(comName) {
-        this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
-        this.addListeners();
+    constructor(comName, logger) {
+        this.dtmTransport = new DTMTransport(comName);
+        this.logger = logger;
+
+        this.DTM_PKT = DTM_PKT;
+        this.DTM_CONTROL = DTM_CONTROL;
+        this.DTM_PARAMETER = DTM_PARAMETER;
+
+        // Setting default paramters
+        this.lengthPayload = 1;
+        this.modulationPayload = this.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
+        this.phyPayload = this.DTM_PARAMETER.PHY_LE_1M;
+        this.dbmPayload = 0;
+
+
+        this.isTransmitting = false;
+        this.isReceiving = false;
+
+        this.packetsReceived = 0;
     }
 
-    addListeners() {
-        this.port.on('data', data => {
-            debug(data);
-            if (this.callback) {
-                if (data.length === 1) {
-                    if (this.dataBuffer) {
-                        this.dataBuffer = Buffer.concat([this.dataBuffer, data]);
-                        this.callback(this.dataBuffer);
-                        this.dataBuffer = undefined;
-                    } else {
-                        this.dataBuffer = data;
-                    }
-                } else if (data.length === 2) {
-                    this.callback(data);
-                } else {
-                    debug('Unexpected data length: ', data.length);
+    log(message) {
+        if (this.logger !== undefined) {
+            this.logger.info(`DTM: ${message}`);
+        }
+    }
+
+    async setupReset() {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.RESET,
+            DTM_PARAMETER.DEFAULT,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async setupLength(length = this.lengthPayload) {
+        this.lengthPayload = length;
+        const lengthBits = length >> 6;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.ENABLE_LENGTH,
+            lengthBits,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async setupPhy(payload = this.phyPayload) {
+        this.phyPayload = payload;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.PHY,
+            payload,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async setupModulation(payload = this.modulationPayload) {
+        this.modulationPayload = payload;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.MODULATION,
+            payload,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async setupReadFeatures() {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.FEATURES,
+            0,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async setupReadSupportedRxTx(parameter) {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.TXRX,
+            parameter,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    startTimeoutEvent(rxtxFlag, timeout) {
+        let timeoutEvent;
+        if (timeout > 0) {
+            timeoutEvent = setTimeout(() => {
+                if (rxtxFlag()) {
+                    this.endTest();
                 }
-            } else {
-                debug('Unhandled data: ', data);
-            }
-        });
-        this.port.on('error', error => {
-            debug(error);
-        });
-        this.port.on('open', () => {
-            debug('open');
-        });
-        this.port.on('close', () => {
-            debug('close');
-        });
+            }, timeout);
+        }
+        return timeoutEvent;
     }
 
-    open() {
-        return new Promise(res => {
-            this.port.open(err => {
-                if (err) {
-                    throw err;
+    startSweepTimeoutEvent(rxtxFlag, timeout) {
+        let timeoutEvent;
+        if (timeout > 0) {
+            timeoutEvent = setTimeout(() => {
+                if (rxtxFlag()) {
+                    this.endCurrentTest();
                 }
-                res();
-            });
-        });
+            }, timeout);
+        }
+        return timeoutEvent;
     }
 
-    close() {
-        return new Promise(res => {
-            this.port.close(err => {
-                if (err) {
-                    throw err;
-                }
-                res();
-            });
-        });
+    endTimeoutEvent(event) {
+        if (event !== undefined) {
+            clearTimeout(event);
+        }
     }
 
-    createCMD(cmdType, arg2, arg3, arg4) {
-        debug(this);
-        return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
-    }
-
-    /**
-     * Create setup command
-     *
-     * @param {DTM_CONTROL} control the control to set
-     * @param {DTM_PARAMETER} parameter the parameter to set
-     * @param {DTM_DC} dc the dc to set
-     *
-     * @returns {createCMD} created command
-     */
-    createSetupCMD(
-        control = DTM_CONTROL.RESET,
-        parameter = DTM_PARAMETER.DEFAULT,
-        dc = DTM_DC.DEFAULT,
-    ) {
-        return this.createCMD(DTM_CMD.TEST_SETUP + control + parameter + dc);
-    }
-
-    /**
-     * Create end command
-     *
-     * @returns {createCMD} created command
-     */
-    createEndCMD() {
-        return this.createCMD(DTM_CMD.TEST_END
-            + DTM_CONTROL.END
-            + DTM_PARAMETER.DEFAULT
-            + DTM_DC.DEFAULT);
-    }
-
-    /**
-     * Create transmitter command
-     *
-     * @param {DTM_FREQUENCY} frequency the frequency to set
-     * @param {DTM_LENGTH} length the length to set
-     * @param {DTM_PKT} pkt the pkt to set
-     *
-     * @returns {createCMD} created command
-     */
-    createTransmitterCMD(
-        frequency = DTM_FREQUENCY(2402),
-        length = DTM_LENGTH(0),
-        pkt = DTM_PKT.DEFAULT,
-    ) {
-        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + frequency + length + pkt);
-    }
-
-    /**
-     * Create receiver command
-     *
-     * @param {DTM_FREQUENCY} frequency the frequency to set
-     * @param {DTM_LENGTH} length the length to set
-     * @param {DTM_PKT} pkt the pkt to set
-     *
-     * @returns {createCMD} created command
-     */
-    createReceiverCMD(
-        frequency = DTM_FREQUENCY(2402),
-        length = DTM_LENGTH(0),
-        pkt = DTM_PKT.DEFAULT,
-    ) {
-        return this.createCMD(DTM_CMD.RECEIVER_TEST + frequency + length + pkt);
-    }
-
-    sendCMD(cmd) {
-        return new Promise(async res => {
-            await this.open();
-            this.port.write(cmd);
-            this.callback = data => {
-                this.callback = undefined;
-                this.close();
-                debug(data);
-                res(data);
+    endEventDataReceived() {
+        return new Promise (done => {
+            this.onEndEvent = (success, received) => {
+                done({ success, received });
             };
         });
     }
+
+    carrierTestCMD(frequency, length, bitpattern) {
+        let lengthParam = length;
+        if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
+            lengthParam = 0;
+        }
+        return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
+    }
+
+    carrierTestStudioCMD(frequency, length, bitpattern) {
+        let lengthParam = length;
+        if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
+            lengthParam = 1;
+        }
+        return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
+    }
+
+    /**
+     * Set TX power
+     *
+     * @param {dbm} signal strength [-40dbm, +4dbm]
+     *
+     * @returns {createCMD} created command
+     */
+    async setTxPower(dbm = this.dbmPayload) {
+        this.dbmPayload = dbm;
+        const value = dbm & 0x3F;
+        const cmd = this.dtmTransport.createTxPowerCMD(dbm);
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    async singleChannelTransmitterTest(bitpattern, length, channel, timeout = 0) {
+        if (this.isTransmitting) {
+            // Stop previous transmission
+        }
+        this.isTransmitting = true;
+        const timeoutEvent = this.startTimeoutEvent(this.isTransmitting, timeout);
+
+        const frequency = channelToFrequency(channel);
+        const cmd = this.carrierTestCMD(frequency, length, bitpattern);
+        const response = await this.dtmTransport.sendCMD(cmd);
+
+        if (!reportSuccess(response)) {
+            this.endTimeoutEvent(timeoutEvent);
+            return { success: false, message: 'Could not start transmission.' };
+        }
+        const status = await this.endEventDataReceived();
+        this.endTimeoutEvent(timeoutEvent);
+        return status;
+    }
+
+    async sweepTransmitterTest(bitpattern, length, channelLow, channelHigh, sweepTime = 1000, timeout = 0, randomPattern = false) {
+        if (this.isTransmitting) {
+            // Stop previous transmission
+        }
+        this.isTransmitting = true;
+        const timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
+        let currentChannelIdx = 0;
+        while (this.isTransmitting) {
+            const frequency = channelToFrequency(channelLow + currentChannelIdx);
+            await this.setupReset();
+            await this.setupLength();
+            await this.setupPhy();
+            await this.setupModulation();
+            await this.setTxPower();
+            const cmd = this.carrierTestCMD(frequency, length, bitpattern);
+            const endEventDataReceivedEvt = this.endEventDataReceived();
+            const response = await this.dtmTransport.sendCMD(cmd);
+            if (!reportSuccess(response)) {
+                this.endTimeoutEvent(timeoutEvent);
+                return { success: false, message: 'Could not start transmission.' };
+            }
+
+            const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isTransmitting, sweepTime);
+            const status = await endEventDataReceivedEvt;
+            this.endTimeoutEvent(sweepTimeoutEvent);
+            if (randomPattern) {
+                currentChannelIdx = Math.floor(Math.random() * (channelHigh - channelLow));
+            } else {
+                currentChannelIdx = (currentChannelIdx + 1) % (channelHigh - channelLow);
+            }
+        }
+        console.log(this.isTransmitting)
+        const status = await this.endEventDataReceived();
+        this.endTimeoutEvent(timeoutEvent);
+        return status;
+    }
+
+    async transmitterTest(bitpattern, length, channelConfig) {
+        if (channelConfig.useSingleChannel) {
+            const response = this.singleChannelTransmitterTest(
+                bitpattern,
+                length,
+                channelConfig.singleChannelNum,
+                1000
+            );
+            return response;
+        }
+        return null;
+    }
+
+
+    async endCurrentTest() {
+        //console.log(this.dtmTransport.port)
+        const cmd = this.dtmTransport.createEndCMD();
+        const response = await this.dtmTransport.sendCMD(cmd);
+        if (this.onEndEvent) {
+            this.onEndEvent(0, 0);
+        }
+        return response;
+    }
+
+    async endTest() {
+        this.isTransmitting = false;
+        this.isReceiving = false;
+        return this.endCurrentTest();
+    }
 }
 
-export {
-    DTM,
-    DTM_CMD,
-    DTM_CONTROL,
-    DTM_FREQUENCY,
-    DTM_CMD_FORMAT,
-};
+export { DTM };
