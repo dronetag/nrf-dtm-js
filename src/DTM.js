@@ -39,7 +39,7 @@
  */
 
 import {
-    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY,
+    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY, DTM_EVENT
 } from './DTM_transport';
 
 function channelToFrequency(channel) {
@@ -64,12 +64,13 @@ class DTM {
         this.modulationPayload = this.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
         this.phyPayload = this.DTM_PARAMETER.PHY_LE_1M;
         this.dbmPayload = 0;
+        this.selectedTimer = 0;
 
 
         this.isTransmitting = false;
         this.isReceiving = false;
+        this.timedOut = false;
 
-        this.packetsReceived = 0;
     }
 
     log(message) {
@@ -144,10 +145,14 @@ class DTM {
 
     startTimeoutEvent(rxtxFlag, timeout) {
         let timeoutEvent;
+        this.timedOut = false;
         if (timeout > 0) {
             timeoutEvent = setTimeout(() => {
+                this.timedOut = true;
                 if (rxtxFlag()) {
-                    this.endTest();
+                    if (!this.sweepTimedOut) {
+                        this.endCurrentTest();
+                    }
                 }
             }, timeout);
         }
@@ -156,10 +161,14 @@ class DTM {
 
     startSweepTimeoutEvent(rxtxFlag, timeout) {
         let timeoutEvent;
+        this.sweepTimedOut = false;
         if (timeout > 0) {
             timeoutEvent = setTimeout(() => {
+                this.sweepTimedOut = true;
                 if (rxtxFlag()) {
-                    this.endCurrentTest();
+                    if (!this.timedOut) {
+                        this.endCurrentTest();
+                    }
                 }
             }, timeout);
         }
@@ -181,7 +190,7 @@ class DTM {
     }
 
     carrierTestCMD(frequency, length, bitpattern) {
-        let lengthParam = length;
+        let lengthParam = length & 0x3F;
         if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 0;
         }
@@ -189,7 +198,7 @@ class DTM {
     }
 
     carrierTestStudioCMD(frequency, length, bitpattern) {
-        let lengthParam = length;
+        let lengthParam = length & 0x3F;
         if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 1;
         }
@@ -199,14 +208,28 @@ class DTM {
     /**
      * Set TX power
      *
-     * @param {dbm} signal strength [-40dbm, +4dbm]
+     * @param {dbm} signal strength [-40dbm, +8dbm]
      *
      * @returns {createCMD} created command
      */
     async setTxPower(dbm = this.dbmPayload) {
         this.dbmPayload = dbm;
         const value = dbm & 0x3F;
-        const cmd = this.dtmTransport.createTxPowerCMD(dbm);
+        const cmd = this.dtmTransport.createTxPowerCMD(value);
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Set TX power
+     *
+     * @param {dbm} signal strength [-40dbm, +8dbm]
+     *
+     * @returns {createCMD} created command
+     */
+    async selectTimer(timer = this.selectedTimer) {
+        this.selectedTimer = timer;
+        const cmd = this.dtmTransport.createSelectTimerCMD(timer);
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
     }
@@ -216,56 +239,181 @@ class DTM {
             // Stop previous transmission
         }
         this.isTransmitting = true;
-        const timeoutEvent = this.startTimeoutEvent(this.isTransmitting, timeout);
+        this.timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
+        this.sweepTimedOut = false;
+        this.timedOut = false;
 
         const frequency = channelToFrequency(channel);
         const cmd = this.carrierTestCMD(frequency, length, bitpattern);
         const response = await this.dtmTransport.sendCMD(cmd);
 
         if (!reportSuccess(response)) {
-            this.endTimeoutEvent(timeoutEvent);
+            this.endTimeoutEvent(this.timeoutEvent);
             return { success: false, message: 'Could not start transmission.' };
         }
         const status = await this.endEventDataReceived();
-        this.endTimeoutEvent(timeoutEvent);
+        this.endTimeoutEvent(this.timeoutEvent);
         return status;
     }
 
-    async sweepTransmitterTest(bitpattern, length, channelLow, channelHigh, sweepTime = 1000, timeout = 0, randomPattern = false) {
+    async sweepTransmitterTest(bitpattern,
+        length,
+        channelLow,
+        channelHigh,
+        sweepTime = 1000,
+        timeout = 0,
+        randomPattern = false) {
         if (this.isTransmitting) {
             // Stop previous transmission
         }
-        this.isTransmitting = true;
-        const timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
+        this.isTransmitting = false;
+        this.timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
         let currentChannelIdx = 0;
-        while (this.isTransmitting) {
+        do {
             const frequency = channelToFrequency(channelLow + currentChannelIdx);
+            this.sweepTimedOut = false;
+            this.isTransmitting = false;
             await this.setupReset();
             await this.setupLength();
             await this.setupPhy();
             await this.setupModulation();
             await this.setTxPower();
+            await this.selectTimer();
+
             const cmd = this.carrierTestCMD(frequency, length, bitpattern);
             const endEventDataReceivedEvt = this.endEventDataReceived();
             const response = await this.dtmTransport.sendCMD(cmd);
+            this.isTransmitting = true;
+
             if (!reportSuccess(response)) {
-                this.endTimeoutEvent(timeoutEvent);
+                this.isTransmitting = false;
+                this.endTimeoutEvent(this.timeoutEvent);
                 return { success: false, message: 'Could not start transmission.' };
             }
 
-            const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isTransmitting, sweepTime);
+            const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isTransmitting,
+                sweepTime);
+            this.sweepTimedOut = false;
+            if (this.timedOut) {
+                this.endCurrentTest();
+            }
+
             const status = await endEventDataReceivedEvt;
             this.endTimeoutEvent(sweepTimeoutEvent);
+
+            if (status.success) {
+                // No packets should have been received
+            } else {
+                this.isTransmitting = false;
+                this.endTimeoutEvent(this.timeoutEvent);
+                return { success: false, message: 'Failed to send transmission end event.' };
+            }
+
             if (randomPattern) {
                 currentChannelIdx = Math.floor(Math.random() * (channelHigh - channelLow));
             } else {
-                currentChannelIdx = (currentChannelIdx + 1) % (channelHigh - channelLow);
+                currentChannelIdx = (currentChannelIdx + 1) % (channelHigh - channelLow + 1);
             }
+        } while (this.isTransmitting && !this.timedOut);
+
+        this.endTimeoutEvent(this.timeoutEvent);
+        return { success: true, received: 0 };
+    }
+
+    async singleChannelReceiverTest(channel, timeout = 0) {
+        if (this.isReceiving) {
+            // Stop previous receiver
         }
-        console.log(this.isTransmitting)
-        const status = await this.endEventDataReceived();
-        this.endTimeoutEvent(timeoutEvent);
+        this.isReceiving = true;
+        this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
+        this.timedOut = false;
+        this.sweepTimedOut = false;
+
+        const frequency = channelToFrequency(channel);
+        const cmd = this.dtmTransport.createReceiverCMD(frequency);
+        const endEventDataReceivedEvt = this.endEventDataReceived();
+        const response = await this.dtmTransport.sendCMD(cmd);
+
+        if (!reportSuccess(response)) {
+            this.endTimeoutEvent(this.timeoutEvent);
+            return { success: false, message: 'Could not start receiver.' };
+        }
+        const status = await endEventDataReceivedEvt;
+        this.endTimeoutEvent(this.timeoutEvent);
         return status;
+    }
+
+
+
+    async sweepReceiverTest(
+        channelLow,
+        channelHigh,
+        sweepTime = 1000,
+        timeout = 0,
+        randomPattern = false
+    ) {
+        if (this.isReceiving) {
+            // Stop previous transmission
+        }
+        this.isReceiving = false
+        const packetsReceivedForChannel = new Array(channelHigh - channelLow + 1).fill(0);
+        this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
+        let currentChannelIdx = 0;
+        do {
+            const frequency = channelToFrequency(channelLow + currentChannelIdx);
+            this.sweepTimedOut = false;
+            this.isReceiving = false;
+            await this.setupReset();
+            await this.setupPhy();
+            await this.setupModulation();
+            await this.selectTimer();
+
+            const cmd = this.dtmTransport.createReceiverCMD(frequency);
+            const endEventDataReceivedEvt = this.endEventDataReceived();
+            const responseEvent =  this.dtmTransport.sendCMD(cmd);
+            const response = await responseEvent;
+            this.isReceiving = true;
+
+            if (!reportSuccess(response)) {
+                this.endTimeoutEvent(this.timeoutEvent);
+                return {
+                    success: false,
+                    message: 'Could not start receiver.',
+                };
+            }
+            const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isReceiving,
+                sweepTime);
+            this.sweepTimedOut = false;
+            if (this.timedOut) {
+                this.endCurrentTest();
+            }
+
+            const status = await endEventDataReceivedEvt;
+            this.endTimeoutEvent(sweepTimeoutEvent);
+
+            if (status.success) {
+                packetsReceivedForChannel[currentChannelIdx] += status.received
+            } else {
+                this.endTimeoutEvent(this.timeoutEvent);
+                return {
+                    success: false,
+                    message: 'Failed to send receive end event.',
+                };
+            }
+
+            if (randomPattern) {
+                currentChannelIdx = Math.ceil(Math.random() * (channelHigh - channelLow));
+            } else {
+                currentChannelIdx = (currentChannelIdx + 1) % (channelHigh - channelLow + 1);
+            }
+        } while (this.isReceiving && !this.timedOut);
+
+        this.endTimeoutEvent(this.timeoutEvent);
+        return {
+            success: true,
+            received: packetsReceivedForChannel.reduce((a, b) => a + b),
+            receivedPerChannel: packetsReceivedForChannel,
+        };
     }
 
     async transmitterTest(bitpattern, length, channelConfig) {
@@ -283,19 +431,32 @@ class DTM {
 
 
     async endCurrentTest() {
-        //console.log(this.dtmTransport.port)
         const cmd = this.dtmTransport.createEndCMD();
         const response = await this.dtmTransport.sendCMD(cmd);
+        const event = (response[0] & 0x80) >> 7;
+        let receivedPackets = 0;
+
+        if (event === DTM_EVENT.LE_PACKET_REPORT_EVENT) {
+            const MSB = response[0] & 0x3F;
+            const LSB = response[1];
+            receivedPackets = (MSB << 8) | LSB;
+        }
         if (this.onEndEvent) {
-            this.onEndEvent(0, 0);
+            this.onEndEvent(true, receivedPackets);
         }
         return response;
     }
 
     async endTest() {
-        this.isTransmitting = false;
-        this.isReceiving = false;
-        return this.endCurrentTest();
+        if (this.timedOut) {
+            return;
+        }
+        this.timedOut = true;
+        this.endTimeoutEvent(this.timeoutEvent);
+
+        if (!this.sweepTimedOut && (this.isTransmitting || this.isReceiving)) {
+            this.endCurrentTest();
+        }
     }
 }
 

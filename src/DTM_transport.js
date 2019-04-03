@@ -56,6 +56,12 @@ const DTM_DC = {
     DEFAULT: '00',
 };
 
+// 2 bits
+const DTM_EVENT = {
+    LE_TEST_STATUS_EVENT: 0,
+    LE_PACKET_REPORT_EVENT: 1,
+};
+
 function toBitString(data, length = 6) {
     return data.toString(2).padStart(length, '0');
 }
@@ -190,6 +196,20 @@ class DTMTransport {
     }
 
     /**
+     * Create receiver command
+     *
+     * @param {DTM_FREQUENCY} frequency the frequency to set
+     *
+     * @returns {createCMD} created command
+     */
+    createReceiverCMD(frequency = 2402) {
+        const dtmFrequency = DTM_FREQUENCY(frequency);
+        const dtmLength = toBitString(0);
+        const dtmPkt = toBitString(DTM_PKT.DEFAULT);
+        return this.createCMD(DTM_CMD.RECEIVER_TEST + dtmFrequency + dtmLength + dtmPkt);
+    }
+
+    /**
      * Create TX power command
      *
 
@@ -201,21 +221,11 @@ class DTMTransport {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmDbm + dtmLength + dtmPkt);
     }
 
-    /**
-     * Create receiver command
-     *
-     * @param {DTM_FREQUENCY} frequency the frequency to set
-     * @param {DTM_LENGTH} length the length to set
-     * @param {DTM_PKT} pkt the pkt to set
-     *
-     * @returns {createCMD} created command
-     */
-    createReceiverCMD(
-        frequency = DTM_FREQUENCY(2402),
-        length = DTM_LENGTH(0),
-        pkt = DTM_PKT.DEFAULT
-    ) {
-        return this.createCMD(DTM_CMD.RECEIVER_TEST + frequency + length + pkt);
+    createSelectTimerCMD(value) {
+        const dtmTimer = toBitString(value);
+        const dtmLength = toBitString(3);
+        const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
+        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmTimer + dtmLength + dtmPkt);
     }
 
     sendCMD(cmd) {
@@ -245,4 +255,5 @@ export {
     DTM_PARAMETER,
     DTM_PKT,
     DTM_FREQUENCY,
+    DTM_EVENT,
 };
