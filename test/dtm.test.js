@@ -101,18 +101,18 @@ describe('Setup test', () => {
     });
 
     it('Uncoded phy LE is supported', async () => {
-        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M)).toEqual(Buffer.from(['0x00', '0x00']));
-        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_2M)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_2M)).toEqual(Buffer.from(['0x00', '0x00']));
     });
 
     it('Coded phy LE is supported on nRF52840', async () => {
-        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_CODED_S8)).toEqual(Buffer.from(['0x00', '0x00']));
-        expect(await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_CODED_S2)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_CODED_S8)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_CODED_S2)).toEqual(Buffer.from(['0x00', '0x00']));
     });
 
     it('Setup modulation index', async () => {
-        expect(await dtm.setupModulation(dtm.DTM_PARAMETER.STANDARD_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
-        expect(await dtm.setupModulation(dtm.DTM_PARAMETER.STABLE_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupModulation(DTM.DTM.DTM_PARAMETER.STANDARD_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.setupModulation(DTM.DTM.DTM_PARAMETER.STABLE_MODULATION_INDEX)).toEqual(Buffer.from(['0x00', '0x00']));
     });
 
     it('Read features', async () => {
@@ -177,8 +177,8 @@ describe('Transmit and receive tests', () => {
     it('Transmit and receive single channel', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M)
-        const transmitter = dtm.singleChannelTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 20, 0);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M)
+        const transmitter = dtm.singleChannelTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 20, 0);
         const recv = await dtmReceiver.singleChannelReceiverTest(20, 2000);
         dtm.endTest();
         await transmitter;
@@ -189,8 +189,8 @@ describe('Transmit and receive tests', () => {
     it('Transmit on one channel. Receiver sweep on 5.', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M)
-        const transmitter = dtm.singleChannelTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 20, 0);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M)
+        const transmitter = dtm.singleChannelTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 20, 0);
         const recv = await dtmReceiver.sweepReceiverTest(18, 23, 50, 2000);
         dtm.endTest();
         await transmitter;
@@ -201,8 +201,8 @@ describe('Transmit and receive tests', () => {
     it('Transmit on 5 channels. Receive on single channel.', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M)
-        const transmitter = dtm.sweepTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 18, 23, 50, 0);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M)
+        const transmitter = dtm.sweepTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 18, 23, 50, 0);
         const recv = await dtmReceiver.singleChannelReceiverTest(20, 2000);
         dtm.endTest();
         await transmitter;
@@ -213,8 +213,8 @@ describe('Transmit and receive tests', () => {
     it('Transmit on 5 channels. Receive on 5 channels.', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M);
-        const transmitter = dtm.sweepTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 18, 23, 100, 0);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M);
+        const transmitter = dtm.sweepTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 18, 23, 100, 0);
         const recv = await dtmReceiver.sweepReceiverTest(18, 23, 15, 2000);
         dtm.endTest();
         await transmitter;
@@ -225,8 +225,8 @@ describe('Transmit and receive tests', () => {
     it('Random sweep', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M);
-        const transmitter = dtm.sweepTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 39, 20, 0, true);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M);
+        const transmitter = dtm.sweepTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 39, 20, 0, true);
         const recv = await dtmReceiver.sweepReceiverTest(0, 39, 20, 3000, true);
         dtm.endTest();
         await transmitter;
@@ -237,8 +237,8 @@ describe('Transmit and receive tests', () => {
     it('Non overlapping sequential sweeps returns no packets.', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M);
-        const transmitter = dtm.sweepTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 20, 20, 0);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M);
+        const transmitter = dtm.sweepTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 20, 20, 0);
         const recv = await dtmReceiver.sweepReceiverTest(21, 39, 20, 3000);
         dtm.endTest();
         await transmitter;
@@ -248,9 +248,9 @@ describe('Transmit and receive tests', () => {
 
     it('Perform 30 sweepTransmitterTests', async () => {
         await dtm.setupReset();
-        await dtm.setupPhy(dtm.DTM_PARAMETER.PHY_LE_1M);
+        await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M);
         for (let i = 0; i < 30; i++) {
-            const response = await dtm.sweepTransmitterTest(dtm.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 39, 20, 100);
+            const response = await dtm.sweepTransmitterTest(DTM.DTM.DTM_PKT.PAYLOAD_PRBS9, 1, 0, 39, 20, 100);
             expect(response.success).toEqual(true);
         }
     });

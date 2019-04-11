@@ -55,14 +55,10 @@ class DTM {
         this.dtmTransport = new DTMTransport(comName);
         this.logger = logger;
 
-        this.DTM_PKT = DTM_PKT;
-        this.DTM_CONTROL = DTM_CONTROL;
-        this.DTM_PARAMETER = DTM_PARAMETER;
-
         // Setting default paramters
         this.lengthPayload = 1;
-        this.modulationPayload = this.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
-        this.phyPayload = this.DTM_PARAMETER.PHY_LE_1M;
+        this.modulationPayload = DTM.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
+        this.phyPayload = DTM.DTM_PARAMETER.PHY_LE_1M;
         this.dbmPayload = 0;
         this.selectedTimer = 0;
 
@@ -191,7 +187,7 @@ class DTM {
 
     carrierTestCMD(frequency, length, bitpattern) {
         let lengthParam = length & 0x3F;
-        if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
+        if (bitpattern === DTM.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 0;
         }
         return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
@@ -199,7 +195,7 @@ class DTM {
 
     carrierTestStudioCMD(frequency, length, bitpattern) {
         let lengthParam = length & 0x3F;
-        if (bitpattern === this.DTM_PKT.PAYLOAD_VENDOR) {
+        if (bitpattern === DTM.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 1;
         }
         return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
@@ -459,5 +455,9 @@ class DTM {
         }
     }
 }
+
+DTM.DTM_PKT = DTM_PKT;
+DTM.DTM_CONTROL = DTM_CONTROL;
+DTM.DTM_PARAMETER = DTM_PARAMETER;
 
 export { DTM };
