@@ -1,17 +1,16 @@
-import { DTM_PARAMETER, DTM_PKT } from './DTM_transport';
+const DTM_PHY_STRING = {
+    0x01: 'LE 1Mbps',
+    0x02: 'LE 2Mbps',
+    0x03: 'LE Coded S8',
+    0x04: 'LE Coded S2',
+};
 
-const DTM_PHY_STRING = new Map();
-
-DTM_PHY_STRING.set(DTM_PARAMETER.PHY_LE_1M, 'LE 1Mbps');
-DTM_PHY_STRING.set(DTM_PARAMETER.PHY_LE_2M, 'LE 2Mbps');
-DTM_PHY_STRING.set(DTM_PARAMETER.PHY_LE_CODED_S8, 'LE Coded S8');
-DTM_PHY_STRING.set(DTM_PARAMETER.PHY_LE_CODED_S2, 'LE Coded S2');
-
-const DTM_PKT_STRING = new Map();
-DTM_PKT_STRING.set(DTM_PKT.PAYLOAD_PRBS9, 'PRBS9');
-DTM_PKT_STRING.set(DTM_PKT.PAYLOAD_11110000, '11110000');
-DTM_PKT_STRING.set(DTM_PKT.PAYLOAD_10101010, '10101010');
-DTM_PKT_STRING.set(DTM_PKT.PAYLOAD_VENDOR, 'Constant');
+const DTM_PKT_STRING = {
+    0x00: 'PRBS9',
+    0x01: '11110000',
+    0x02: '10101010',
+    0x03: 'Constant',
+};
 
 export {
     DTM_PHY_STRING,
