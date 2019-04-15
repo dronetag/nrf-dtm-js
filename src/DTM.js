@@ -41,7 +41,7 @@
 import {
     DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY, DTM_EVENT
 } from './DTM_transport';
-import { DTM_PHY_STRING, DTM_PKT_STRING } from './DTM_strings';
+import { DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING } from './DTM_strings';
 
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
@@ -461,4 +461,4 @@ DTM.DTM_PKT = DTM_PKT;
 DTM.DTM_CONTROL = DTM_CONTROL;
 DTM.DTM_PARAMETER = DTM_PARAMETER;
 
-export { DTM, DTM_PHY_STRING, DTM_PKT_STRING };
+export { DTM, DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING };

@@ -12,7 +12,13 @@ const DTM_PKT_STRING = {
     0x03: 'Constant',
 };
 
+const DTM_MODULATION_STRING = {
+    0x00: 'STANDARD_MODULATION_INDEX',
+    0x01: 'STABLE_MODULATION_INDEX',
+};
+
 export {
     DTM_PHY_STRING,
     DTM_PKT_STRING,
+    DTM_MODULATION_STRING,
 };
