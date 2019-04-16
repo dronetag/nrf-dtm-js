@@ -271,11 +271,11 @@ class DTM {
             this.sweepTimedOut = false;
             this.isTransmitting = false;
             await this.setupReset();
-            await this.setupLength();
-            await this.setupPhy();
-            await this.setupModulation();
-            await this.setTxPower();
             await this.selectTimer();
+            await this.setTxPower();
+            await this.setupLength();
+            await this.setupModulation();
+            await this.setupPhy();
 
             const cmd = this.carrierTestCMD(frequency, length, bitpattern);
             const endEventDataReceivedEvt = this.endEventDataReceived();
@@ -361,9 +361,9 @@ class DTM {
             this.sweepTimedOut = false;
             this.isReceiving = false;
             await this.setupReset();
-            await this.setupPhy();
-            await this.setupModulation();
             await this.selectTimer();
+            await this.setupModulation();
+            await this.setupPhy();
 
             const cmd = this.dtmTransport.createReceiverCMD(frequency);
             const endEventDataReceivedEvt = this.endEventDataReceived();

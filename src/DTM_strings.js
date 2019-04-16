@@ -13,8 +13,8 @@ const DTM_PKT_STRING = {
 };
 
 const DTM_MODULATION_STRING = {
-    0x00: 'STANDARD_MODULATION_INDEX',
-    0x01: 'STABLE_MODULATION_INDEX',
+    0x00: 'Standard',
+    0x01: 'Stable',
 };
 
 export {
