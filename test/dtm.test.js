@@ -42,18 +42,10 @@ const DTM = require('../dist/nrf-dtm');
 
 const dtm = new DTM.DTM('COM31');
 const dtmReceiver = new DTM.DTM('COM27');
-/*
-describe('DTM utility test', () => {
-    it('Frequency should be 000000', () => {
-        expect(DTM.DTM_FREQUENCY(2402)).toBe('000000');
-        expect(DTM.DTM_FREQUENCY(2480)).toBe('100111');
-    });
-    it('Command format should be ['0F', '0F']', () => {
-        expect(DTM.DTM_CMD_FORMAT('0000111100001111')).toEqual(Buffer.from(['0x0f', '0x0f']));
-    });
 
-});
-*/
+dtm.addListener(evt => {});
+dtmReceiver.addListener(evt => {});
+
 
 describe('Command test', () => {
     it('Setup command should be [\'0x00\', \'0x00\']', () => {

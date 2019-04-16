@@ -67,6 +67,7 @@ class DTM {
         this.isTransmitting = false;
         this.isReceiving = false;
         this.timedOut = false;
+        this.listeners = [];
 
     }
 
@@ -74,6 +75,16 @@ class DTM {
         if (this.logger !== undefined) {
             this.logger.info(`DTM: ${message}`);
         }
+    }
+
+    callback(event) {
+        this.listeners.forEach(listener => {
+            listener(event);
+        });
+    }
+
+    addListener(func) {
+        this.listeners.push(func);
     }
 
     async setupReset() {
@@ -232,6 +243,9 @@ class DTM {
     }
 
     async singleChannelTransmitterTest(bitpattern, length, channel, timeout = 0) {
+        this.callback({
+            type: 'reset',
+        });
         if (this.isTransmitting) {
             // Stop previous transmission
         }
@@ -248,8 +262,18 @@ class DTM {
             this.endTimeoutEvent(this.timeoutEvent);
             return { success: false, message: 'Could not start transmission.' };
         }
+        this.callback({
+            action: 'started',
+            type: 'transmitter',
+            channel,
+        });
         const status = await this.endEventDataReceived();
         this.endTimeoutEvent(this.timeoutEvent);
+        this.callback({
+            action: 'ended',
+            type: 'transmitter',
+            channel,
+        });
         return status;
     }
 
@@ -260,6 +284,9 @@ class DTM {
         sweepTime = 1000,
         timeout = 0,
         randomPattern = false) {
+        this.callback({
+            type: 'reset',
+        });
         if (this.isTransmitting) {
             // Stop previous transmission
         }
@@ -287,6 +314,11 @@ class DTM {
                 this.endTimeoutEvent(this.timeoutEvent);
                 return { success: false, message: 'Could not start transmission.' };
             }
+            this.callback({
+                action: 'started',
+                type: 'transmitter',
+                channel: channelLow + currentChannelIdx,
+            });
 
             const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isTransmitting,
                 sweepTime);
@@ -305,6 +337,11 @@ class DTM {
                 this.endTimeoutEvent(this.timeoutEvent);
                 return { success: false, message: 'Failed to send transmission end event.' };
             }
+            this.callback({
+                action: 'ended',
+                type: 'transmitter',
+                channel: channelLow + currentChannelIdx,
+            });
 
             if (randomPattern) {
                 currentChannelIdx = Math.floor(Math.random() * (channelHigh - channelLow));
@@ -318,6 +355,9 @@ class DTM {
     }
 
     async singleChannelReceiverTest(channel, timeout = 0) {
+        this.callback({
+            type: 'reset',
+        });
         if (this.isReceiving) {
             // Stop previous receiver
         }
@@ -335,8 +375,19 @@ class DTM {
             this.endTimeoutEvent(this.timeoutEvent);
             return { success: false, message: 'Could not start receiver.' };
         }
+        this.callback({
+            action: 'started',
+            type: 'receiver',
+            channel,
+        });
         const status = await endEventDataReceivedEvt;
         this.endTimeoutEvent(this.timeoutEvent);
+        this.callback({
+            action: 'ended',
+            type: 'receiver',
+            channel,
+            packets: status.received,
+        });
         return status;
     }
 
@@ -349,6 +400,9 @@ class DTM {
         timeout = 0,
         randomPattern = false
     ) {
+        this.callback({
+            type: 'reset',
+        });
         if (this.isReceiving) {
             // Stop previous transmission
         }
@@ -378,6 +432,13 @@ class DTM {
                     message: 'Could not start receiver.',
                 };
             }
+
+            this.callback({
+                action: 'started',
+                type: 'receiver',
+                channel: channelLow + currentChannelIdx,
+            });
+
             const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isReceiving,
                 sweepTime);
             this.sweepTimedOut = false;
@@ -397,6 +458,12 @@ class DTM {
                     message: 'Failed to send receive end event.',
                 };
             }
+            this.callback({
+                action: 'ended',
+                type: 'receiver',
+                channel: channelLow + currentChannelIdx,
+                packets: status.received,
+            });
 
             if (randomPattern) {
                 currentChannelIdx = Math.ceil(Math.random() * (channelHigh - channelLow));
