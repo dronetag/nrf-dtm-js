@@ -39,9 +39,11 @@
  */
 
 import {
-    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY, DTM_EVENT
+    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_EVENT,
 } from './DTM_transport';
 import { DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING } from './DTM_strings';
+
+/* eslint-disable no-await-in-loop */
 
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
@@ -68,7 +70,6 @@ class DTM {
         this.isReceiving = false;
         this.timedOut = false;
         this.listeners = [];
-
     }
 
     log(message) {
@@ -87,69 +88,6 @@ class DTM {
         this.listeners.push(func);
     }
 
-    async setupReset() {
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.RESET,
-            DTM_PARAMETER.DEFAULT,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
-
-    async setupLength(length = this.lengthPayload) {
-        this.lengthPayload = length;
-        const lengthBits = length >> 6;
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.ENABLE_LENGTH,
-            lengthBits,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
-
-    async setupPhy(payload = this.phyPayload) {
-        this.phyPayload = payload;
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.PHY,
-            payload,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
-
-    async setupModulation(payload = this.modulationPayload) {
-        this.modulationPayload = payload;
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.MODULATION,
-            payload,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
-
-    async setupReadFeatures() {
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.FEATURES,
-            0,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
-
-    async setupReadSupportedRxTx(parameter) {
-        const cmd = this.dtmTransport.createSetupCMD(
-            DTM_CONTROL.TXRX,
-            parameter,
-            DTM_DC.DEFAULT
-        );
-        const response = await this.dtmTransport.sendCMD(cmd);
-        return response;
-    }
 
     startTimeoutEvent(rxtxFlag, timeout) {
         let timeoutEvent;
@@ -183,18 +121,35 @@ class DTM {
         return timeoutEvent;
     }
 
-    endTimeoutEvent(event) {
+    static endTimeoutEvent(event) {
         if (event !== undefined) {
             clearTimeout(event);
         }
     }
 
     endEventDataReceived() {
-        return new Promise (done => {
+        return new Promise(done => {
             this.onEndEvent = (success, received) => {
                 done({ success, received });
             };
         });
+    }
+
+    async endCurrentTest() {
+        const cmd = this.dtmTransport.createEndCMD();
+        const response = await this.dtmTransport.sendCMD(cmd);
+        const event = (response[0] & 0x80) >> 7;
+        let receivedPackets = 0;
+
+        if (event === DTM_EVENT.LE_PACKET_REPORT_EVENT) {
+            const MSB = response[0] & 0x3F;
+            const LSB = response[1];
+            receivedPackets = (MSB << 8) | LSB;
+        }
+        if (this.onEndEvent) {
+            this.onEndEvent(true, receivedPackets);
+        }
+        return response;
     }
 
     carrierTestCMD(frequency, length, bitpattern) {
@@ -214,11 +169,11 @@ class DTM {
     }
 
     /**
-     * Set TX power
+     * Set TX power for transmissions
      *
-     * @param {dbm} signal strength [-40dbm, +8dbm]
+     * @param {DTM_TX} dbm signal strength [-40dbm, +8dbm]
      *
-     * @returns {createCMD} created command
+     * @returns {response} response from device
      */
     async setTxPower(dbm = this.dbmPayload) {
         this.dbmPayload = dbm;
@@ -229,11 +184,11 @@ class DTM {
     }
 
     /**
-     * Set TX power
+     * Select timer to use
      *
-     * @param {dbm} signal strength [-40dbm, +8dbm]
+     * @param {timer} timer to use
      *
-     * @returns {createCMD} created command
+     * @returns {response} response from device
      */
     async selectTimer(timer = this.selectedTimer) {
         this.selectedTimer = timer;
@@ -242,6 +197,124 @@ class DTM {
         return response;
     }
 
+    /**
+     * Run setup reset command
+     *
+     * @returns {response} response from device
+     */
+    async setupReset() {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.RESET,
+            DTM_PARAMETER.DEFAULT,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Setup packet length
+     *
+     * @param {DTM_LENGTH} length of transmit packets
+     *
+     * @returns {response} response from device
+     */
+    async setupLength(length = this.lengthPayload) {
+        this.lengthPayload = length;
+        const lengthBits = length >> 6;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.ENABLE_LENGTH,
+            lengthBits,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Setup physical layer (PHY)
+     *
+     * @param {DTM_PHY} phy setting selected [PHY_LE_1M, PHY_LE_2M,
+      PHY_LE_CODED_S2, PHY_LE_CODED_S8]
+     *
+     * @returns {response} response from device
+     */
+    async setupPhy(phy = this.phyPayload) {
+        this.phyPayload = phy;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.PHY,
+            phy,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Setup modulation type
+     *
+     * @param {DTM_MODULATION} modulation setting selected [STANDARD_MODULATION_INDEX,
+     STABLE_MODULATION_INDEX]
+     *
+     * @returns {response} response from device
+     */
+    async setupModulation(modulation = this.modulationPayload) {
+        this.modulationPayload = modulation;
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.MODULATION,
+            modulation,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Read device features
+     *
+     * @returns {response} response from device
+     */
+    async setupReadFeatures() {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.FEATURES,
+            0,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Read supported max Tx/Rx
+     *
+     * @param {DTM_SUPPORTED_RXTX} parameter is the type of information to read [
+     SUPPORTED_MAX_TX_OCTETS,
+     SUPPORTED_MAX_TX_TIME,
+     SUPPORTED_MAX_RX_OCTETS,
+     SUPPORTED_MAX_RX_TIME]
+     *
+     * @returns {response} response from device
+     */
+    async setupReadSupportedRxTx(parameter) {
+        const cmd = this.dtmTransport.createSetupCMD(
+            DTM_CONTROL.TXRX,
+            parameter,
+            DTM_DC.DEFAULT
+        );
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+    /**
+     * Run DTM transmitter test using a single channel
+     *
+     * @param {DTM_PKT} bitpattern to use
+     * @param {DTM_LENGTH} length in bytes of transmit packets
+     * @param {DTM_CHANNEL} channel to use for transmission
+     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     *
+     * @returns {status} object containing success state and number of received packets
+     */
     async singleChannelTransmitterTest(bitpattern, length, channel, timeout = 0) {
         this.callback({
             type: 'reset',
@@ -277,6 +350,23 @@ class DTM {
         return status;
     }
 
+    /**
+     * Run DTM transmitter test using a range of channels
+     *
+     * @param {DTM_PKT} bitpattern to use
+     * @param {DTM_LENGTH} length in bytes of transmit packets
+     * @param {DTM_CHANNEL_LOW} channelLow is the fist channel in the range
+      to use for sweep transmission.
+     * @param {DTM_CHANNEL_HIGH} channelHigh is the last channel in the range
+      to use for sweep transmission.
+     * @param {DTM_SWEEP_TIME} sweepTime is the time in milliseconds before
+      moving on to the next channel in the sweep range.
+     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     * @param {RANDOM_PATTERN} randomPattern is true for random channel sweep
+      pattern, false for sequential channel sweep.
+     *
+     * @returns {status} object containing success state and number of received packets
+     */
     async sweepTransmitterTest(bitpattern,
         length,
         channelLow,
@@ -354,6 +444,14 @@ class DTM {
         return { success: true, received: 0 };
     }
 
+    /**
+     * Run DTM receiver test using a single channel
+     *
+     * @param {DTM_CHANNEL} channel to use for transmission
+     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     *
+     * @returns {status} object containing success state and number of received packets
+     */
     async singleChannelReceiverTest(channel, timeout = 0) {
         this.callback({
             type: 'reset',
@@ -392,7 +490,21 @@ class DTM {
     }
 
 
-
+    /**
+     * Run DTM receiver test using a range of channels
+     *
+     * @param {DTM_CHANNEL_LOW} channelLow is the fist channel in
+      the range to use for sweep transmission.
+     * @param {DTM_CHANNEL_HIGH} channelHigh is the last channel in the range
+      to use for sweep transmission.
+     * @param {DTM_SWEEP_TIME} sweepTime is the time in milliseconds before
+      moving on to the next channel in the sweep range.
+     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     * @param {RANDOM_PATTERN} randomPattern is true for random channel sweep
+      pattern, false for sequential channel sweep.
+     *
+     * @returns {status} object containing success state and number of received packets
+     */
     async sweepReceiverTest(
         channelLow,
         channelHigh,
@@ -406,7 +518,7 @@ class DTM {
         if (this.isReceiving) {
             // Stop previous transmission
         }
-        this.isReceiving = false
+        this.isReceiving = false;
         const packetsReceivedForChannel = new Array(channelHigh - channelLow + 1).fill(0);
         this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
         let currentChannelIdx = 0;
@@ -421,7 +533,7 @@ class DTM {
 
             const cmd = this.dtmTransport.createReceiverCMD(frequency);
             const endEventDataReceivedEvt = this.endEventDataReceived();
-            const responseEvent =  this.dtmTransport.sendCMD(cmd);
+            const responseEvent = this.dtmTransport.sendCMD(cmd);
             const response = await responseEvent;
             this.isReceiving = true;
 
@@ -439,8 +551,9 @@ class DTM {
                 channel: channelLow + currentChannelIdx,
             });
 
-            const sweepTimeoutEvent = this.startSweepTimeoutEvent(() => this.isReceiving,
-                sweepTime);
+            const sweepTimeoutEvent = this.startSweepTimeoutEvent(
+                () => this.isReceiving, sweepTime
+            );
             this.sweepTimedOut = false;
             if (this.timedOut) {
                 this.endCurrentTest();
@@ -450,7 +563,7 @@ class DTM {
             this.endTimeoutEvent(sweepTimeoutEvent);
 
             if (status.success) {
-                packetsReceivedForChannel[currentChannelIdx] += status.received
+                packetsReceivedForChannel[currentChannelIdx] += status.received;
             } else {
                 this.endTimeoutEvent(this.timeoutEvent);
                 return {
@@ -480,37 +593,11 @@ class DTM {
         };
     }
 
-    async transmitterTest(bitpattern, length, channelConfig) {
-        if (channelConfig.useSingleChannel) {
-            const response = this.singleChannelTransmitterTest(
-                bitpattern,
-                length,
-                channelConfig.singleChannelNum,
-                1000
-            );
-            return response;
-        }
-        return null;
-    }
-
-
-    async endCurrentTest() {
-        const cmd = this.dtmTransport.createEndCMD();
-        const response = await this.dtmTransport.sendCMD(cmd);
-        const event = (response[0] & 0x80) >> 7;
-        let receivedPackets = 0;
-
-        if (event === DTM_EVENT.LE_PACKET_REPORT_EVENT) {
-            const MSB = response[0] & 0x3F;
-            const LSB = response[1];
-            receivedPackets = (MSB << 8) | LSB;
-        }
-        if (this.onEndEvent) {
-            this.onEndEvent(true, receivedPackets);
-        }
-        return response;
-    }
-
+    /**
+     * End any running DTM test
+     *
+     * @returns {null} nothing is returned
+     */
     async endTest() {
         if (this.timedOut) {
             return;
@@ -528,4 +615,6 @@ DTM.DTM_PKT = DTM_PKT;
 DTM.DTM_CONTROL = DTM_CONTROL;
 DTM.DTM_PARAMETER = DTM_PARAMETER;
 
-export { DTM, DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING };
+export {
+    DTM, DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING,
+};

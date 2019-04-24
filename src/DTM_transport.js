@@ -66,9 +66,6 @@ function toBitString(data, length = 6) {
     return data.toString(2).padStart(length, '0');
 }
 
-// 6 bits
-const DTM_LENGTH = l => toBitString(l);
-
 const DTM_CMD_FORMAT = cmd => {
     const firstByte = parseInt(cmd.substring(0, 8), 2).toString(16).padStart(2, '0');
     const secondByte = parseInt(cmd.substring(8, 16), 2).toString(16).padStart(2, '0');
@@ -135,10 +132,6 @@ class DTMTransport {
         this.port.on('open', () => {
             debug('open');
         });
-        /*this.port.on('close', () => {
-            debug('close');
-            console.log("closed port")
-        });*/
     }
 
     open() {
@@ -163,11 +156,6 @@ class DTMTransport {
         });
     }
 
-    /**
-     * Create end command
-     *
-     * @returns {createCMD} created command
-     */
     createEndCMD() {
         return this.createCMD(DTM_CMD.TEST_END
             + toBitString(DTM_CONTROL.END)
@@ -195,13 +183,6 @@ class DTMTransport {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 
-    /**
-     * Create receiver command
-     *
-     * @param {DTM_FREQUENCY} frequency the frequency to set
-     *
-     * @returns {createCMD} created command
-     */
     createReceiverCMD(frequency = 2402) {
         const dtmFrequency = DTM_FREQUENCY(frequency);
         const dtmLength = toBitString(0);
@@ -209,11 +190,6 @@ class DTMTransport {
         return this.createCMD(DTM_CMD.RECEIVER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 
-    /**
-     * Create TX power command
-     *
-
-     */
     createTxPowerCMD(dbm) {
         const dtmDbm = toBitString(dbm);
         const dtmLength = toBitString(2);
@@ -237,12 +213,10 @@ class DTMTransport {
                 const whenPortIsClosed = () => {
                     this.port.removeListener('close', whenPortIsClosed);
                     res(data);
-                }
+                };
                 this.port.on('close', whenPortIsClosed);
                 this.close();
                 debug(data);
-
-
             };
         });
     }
