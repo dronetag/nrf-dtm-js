@@ -1,3 +1,273 @@
+'use strict';
+
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var SerialPort = _interopDefault(require('serialport'));
+var Debug = _interopDefault(require('debug'));
+
+// 2 bits
+const DTM_CMD = {
+    TEST_SETUP: '00',
+    RECEIVER_TEST: '01',
+    TRANSMITTER_TEST: '10',
+    TEST_END: '11',
+};
+
+// 6 bits
+const DTM_CONTROL = {
+    // Test setup cmd
+    RESET: 0x00,
+    ENABLE_LENGTH: 0x01,
+    PHY: 0x02,
+    MODULATION: 0x03,
+    FEATURES: 0x04,
+    TXRX: 0x05,
+
+    // Test end cmd
+    END: 0x00,
+};
+
+// 6 bits
+const DTM_FREQUENCY = f => ((f - 2402) / 2).toString(2).padStart(6, '0');
+
+const DTM_PARAMETER = {
+    DEFAULT: 0x00,
+    PHY_LE_1M: 0x01,
+    PHY_LE_2M: 0x02,
+    PHY_LE_CODED_S8: 0x03,
+    PHY_LE_CODED_S2: 0x04,
+
+    STANDARD_MODULATION_INDEX: 0x00,
+    STABLE_MODULATION_INDEX: 0x01,
+
+    SUPPORTED_MAX_TX_OCTETS: 0x00,
+    SUPPORTED_MAX_TX_TIME: 0x01,
+    SUPPORTED_MAX_RX_OCTETS: 0x02,
+    SUPPORTED_MAX_RX_TIME: 0x03,
+};
+
+// 2 bits
+const DTM_PKT = {
+    DEFAULT: 0x00,
+    PAYLOAD_PRBS9: 0x00,
+    PAYLOAD_11110000: 0x01,
+    PAYLOAD_10101010: 0x02,
+    PAYLOAD_VENDOR: 0x03,
+};
+
+// 2 bits
+const DTM_DC = {
+    DEFAULT: '00',
+};
+
+// 2 bits
+const DTM_EVENT = {
+    LE_TEST_STATUS_EVENT: 0,
+    LE_PACKET_REPORT_EVENT: 1,
+};
+
+function toBitString(data, length = 6) {
+    return data.toString(2).padStart(length, '0');
+}
+
+const DTM_CMD_FORMAT = cmd => {
+    const firstByte = parseInt(cmd.substring(0, 8), 2).toString(16).padStart(2, '0');
+    const secondByte = parseInt(cmd.substring(8, 16), 2).toString(16).padStart(2, '0');
+    return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
+};
+
+const debug = Debug('dtm');
+
+class DTMTransport {
+    constructor(comName) {
+        this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
+        this.addListeners();
+    }
+
+    createCMD(cmdType, arg2, arg3, arg4) {
+        debug(this);
+        return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
+    }
+
+    /**
+     * Create setup command
+     *
+     * @param {DTM_CONTROL} control the control to set
+     * @param {DTM_PARAMETER} parameter the parameter to set
+     * @param {DTM_DC} dc the dc to set
+     *
+     * @returns {createCMD} created command
+     */
+    createSetupCMD(
+        control = DTM_CONTROL.RESET,
+        parameter = DTM_PARAMETER.DEFAULT,
+        dc = DTM_DC.DEFAULT
+    ) {
+        const controlBits = toBitString(control);
+        const parameterBits = toBitString(parameter);
+        return this.createCMD(DTM_CMD.TEST_SETUP + controlBits + parameterBits + dc);
+    }
+
+
+    addListeners() {
+        this.port.on('data', data => {
+            debug(data);
+            if (this.callback) {
+                if (data.length === 1) {
+                    if (this.dataBuffer) {
+                        this.dataBuffer = Buffer.concat([this.dataBuffer, data]);
+                        this.callback(this.dataBuffer);
+                        this.dataBuffer = undefined;
+                    } else {
+                        this.dataBuffer = data;
+                    }
+                } else if (data.length === 2) {
+                    this.callback(data);
+                } else {
+                    debug('Unexpected data length: ', data.length);
+                }
+            } else {
+                debug('Unhandled data: ', data);
+            }
+        });
+        this.port.on('error', error => {
+            debug(error);
+        });
+        this.port.on('open', () => {
+            debug('open');
+        });
+        /*this.port.on('close', () => {
+            debug('close');
+            console.log("closed port")
+        });*/
+    }
+
+    open() {
+        return new Promise(res => {
+            this.port.open(err => {
+                if (err && (err.message.includes('Error: Port is already open') || err.message.includes('Error: Port is opening'))) {
+                    throw err;
+                }
+                res();
+            });
+        });
+    }
+
+    close() {
+        return new Promise(res => {
+            this.port.close(err => {
+                if (err) {
+                    throw err;
+                }
+                res();
+            });
+        });
+    }
+
+    /**
+     * Create end command
+     *
+     * @returns {createCMD} created command
+     */
+    createEndCMD() {
+        return this.createCMD(DTM_CMD.TEST_END
+            + toBitString(DTM_CONTROL.END)
+            + toBitString(DTM_PARAMETER.DEFAULT)
+            + DTM_DC.DEFAULT);
+    }
+
+    /**
+     * Create transmitter command
+     *
+     * @param {DTM_FREQUENCY} frequency the frequency to set
+     * @param {DTM_LENGTH} length the length to set
+     * @param {DTM_PKT} pkt the pkt to set
+     *
+     * @returns {createCMD} created command
+     */
+    createTransmitterCMD(
+        frequency = 2402,
+        length = 0,
+        pkt = DTM_PKT.DEFAULT,
+    ) {
+        const dtmFrequency = DTM_FREQUENCY(frequency);
+        const dtmLength = toBitString(length);
+        const dtmPkt = toBitString(pkt, 2);
+        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmFrequency + dtmLength + dtmPkt);
+    }
+
+    /**
+     * Create receiver command
+     *
+     * @param {DTM_FREQUENCY} frequency the frequency to set
+     *
+     * @returns {createCMD} created command
+     */
+    createReceiverCMD(frequency = 2402) {
+        const dtmFrequency = DTM_FREQUENCY(frequency);
+        const dtmLength = toBitString(0);
+        const dtmPkt = toBitString(DTM_PKT.DEFAULT);
+        return this.createCMD(DTM_CMD.RECEIVER_TEST + dtmFrequency + dtmLength + dtmPkt);
+    }
+
+    /**
+     * Create TX power command
+     *
+
+     */
+    createTxPowerCMD(dbm) {
+        const dtmDbm = toBitString(dbm);
+        const dtmLength = toBitString(2);
+        const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
+        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmDbm + dtmLength + dtmPkt);
+    }
+
+    createSelectTimerCMD(value) {
+        const dtmTimer = toBitString(value);
+        const dtmLength = toBitString(3);
+        const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
+        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmTimer + dtmLength + dtmPkt);
+    }
+
+    sendCMD(cmd) {
+        return new Promise(async res => {
+            await this.open();
+            this.port.write(cmd);
+            this.callback = data => {
+                this.callback = undefined;
+                const whenPortIsClosed = () => {
+                    this.port.removeListener('close', whenPortIsClosed);
+                    res(data);
+                };
+                this.port.on('close', whenPortIsClosed);
+                this.close();
+                debug(data);
+
+
+            };
+        });
+    }
+}
+
+const DTM_PHY_STRING = {
+    0x01: 'LE 1Mbps',
+    0x02: 'LE 2Mbps',
+    0x03: 'LE Coded S8',
+    0x04: 'LE Coded S2',
+};
+
+const DTM_PKT_STRING = {
+    0x00: 'PRBS9',
+    0x01: '11110000',
+    0x02: '10101010',
+    0x03: 'Constant',
+};
+
+const DTM_MODULATION_STRING = {
+    0x00: 'Standard',
+    0x01: 'Stable',
+};
+
 /**
  * copyright (c) 2015 - 2018, Nordic Semiconductor ASA
  *
@@ -38,11 +308,6 @@
  *
  */
 
-import {
-    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_FREQUENCY, DTM_EVENT
-} from './DTM_transport';
-import { DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING } from './DTM_strings';
-
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
 }
@@ -51,15 +316,15 @@ function reportSuccess(report) {
     return (report[0] & 0x01) === 0;
 }
 
-class DTM {
+class DTM$1 {
     constructor(comName, logger) {
         this.dtmTransport = new DTMTransport(comName);
         this.logger = logger;
 
         // Setting default paramters
         this.lengthPayload = 1;
-        this.modulationPayload = DTM.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
-        this.phyPayload = DTM.DTM_PARAMETER.PHY_LE_1M;
+        this.modulationPayload = DTM$1.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
+        this.phyPayload = DTM$1.DTM_PARAMETER.PHY_LE_1M;
         this.dbmPayload = 0;
         this.selectedTimer = 0;
 
@@ -199,7 +464,7 @@ class DTM {
 
     carrierTestCMD(frequency, length, bitpattern) {
         let lengthParam = length & 0x3F;
-        if (bitpattern === DTM.DTM_PKT.PAYLOAD_VENDOR) {
+        if (bitpattern === DTM$1.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 0;
         }
         return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
@@ -207,7 +472,7 @@ class DTM {
 
     carrierTestStudioCMD(frequency, length, bitpattern) {
         let lengthParam = length & 0x3F;
-        if (bitpattern === DTM.DTM_PKT.PAYLOAD_VENDOR) {
+        if (bitpattern === DTM$1.DTM_PKT.PAYLOAD_VENDOR) {
             lengthParam = 1;
         }
         return this.dtmTransport.createTransmitterCMD(frequency, lengthParam, bitpattern);
@@ -246,9 +511,6 @@ class DTM {
         this.callback({
             type: 'reset',
         });
-        if (this.isTransmitting) {
-            // Stop previous transmission
-        }
         this.isTransmitting = true;
         this.timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
         this.sweepTimedOut = false;
@@ -287,9 +549,6 @@ class DTM {
         this.callback({
             type: 'reset',
         });
-        if (this.isTransmitting) {
-            // Stop previous transmission
-        }
         this.isTransmitting = false;
         this.timeoutEvent = this.startTimeoutEvent(() => this.isTransmitting, timeout);
         let currentChannelIdx = 0;
@@ -358,9 +617,6 @@ class DTM {
         this.callback({
             type: 'reset',
         });
-        if (this.isReceiving) {
-            // Stop previous receiver
-        }
         this.isReceiving = true;
         this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
         this.timedOut = false;
@@ -403,10 +659,7 @@ class DTM {
         this.callback({
             type: 'reset',
         });
-        if (this.isReceiving) {
-            // Stop previous transmission
-        }
-        this.isReceiving = false
+        this.isReceiving = false;
         const packetsReceivedForChannel = new Array(channelHigh - channelLow + 1).fill(0);
         this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
         let currentChannelIdx = 0;
@@ -450,7 +703,7 @@ class DTM {
             this.endTimeoutEvent(sweepTimeoutEvent);
 
             if (status.success) {
-                packetsReceivedForChannel[currentChannelIdx] += status.received
+                packetsReceivedForChannel[currentChannelIdx] += status.received;
             } else {
                 this.endTimeoutEvent(this.timeoutEvent);
                 return {
@@ -524,8 +777,59 @@ class DTM {
     }
 }
 
-DTM.DTM_PKT = DTM_PKT;
-DTM.DTM_CONTROL = DTM_CONTROL;
-DTM.DTM_PARAMETER = DTM_PARAMETER;
+DTM$1.DTM_PKT = DTM_PKT;
+DTM$1.DTM_CONTROL = DTM_CONTROL;
+DTM$1.DTM_PARAMETER = DTM_PARAMETER;
 
-export { DTM, DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING };
+
+
+
+var DTM$2 = Object.freeze({
+	DTM: DTM$1,
+	DTM_PHY_STRING: DTM_PHY_STRING,
+	DTM_PKT_STRING: DTM_PKT_STRING,
+	DTM_MODULATION_STRING: DTM_MODULATION_STRING
+});
+
+/**
+ * copyright (c) 2015 - 2018, Nordic Semiconductor ASA
+ *
+ * all rights reserved.
+ *
+ * redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. redistributions in binary form, except as embedded into a nordic
+ *    semiconductor asa integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ *
+ * 3. neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * 4. this software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ *
+ * 5. any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ *
+ * this software is provided by Nordic Semiconductor ASA "as is" and any express
+ * or implied warranties, including, but not limited to, the implied warranties
+ * of merchantability, noninfringement, and fitness for a particular purpose are
+ * disclaimed. in no event shall Nordic Semiconductor ASA or contributors be
+ * liable for any direct, indirect, incidental, special, exemplary, or
+ * consequential damages (including, but not limited to, procurement of substitute
+ * goods or services; loss of use, data, or profits; or business interruption)
+ * however caused and on any theory of liability, whether in contract, strict
+ * liability, or tort (including negligence or otherwise) arising in any way out
+ * of the use of this software, even if advised of the possibility of such damage.
+ *
+ */
+
+module.exports = DTM$2;
+//# sourceMappingURL=nrf-dtm.js.map
