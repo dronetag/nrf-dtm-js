@@ -121,7 +121,7 @@ class DTM {
         return timeoutEvent;
     }
 
-    static endTimeoutEvent(event) {
+    endTimeoutEvent(event) {
         if (event !== undefined) {
             clearTimeout(event);
         }
