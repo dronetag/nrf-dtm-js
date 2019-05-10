@@ -37,7 +37,7 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
-
+import EventEmitter from 'Events';
 import {
     DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_EVENT,
 } from './DTM_transport';
@@ -53,11 +53,10 @@ function reportSuccess(report) {
     return (report[0] & 0x01) === 0;
 }
 
-class DTM {
-    constructor(comName, logger) {
+class DTM extends EventEmitter {
+    constructor(comName) {
+        super();
         this.dtmTransport = new DTMTransport(comName);
-        this.logger = logger;
-
         // Setting default paramters
         this.lengthPayload = 1;
         this.modulationPayload = DTM.DTM_PARAMETER.STANDARD_MODULATION_INDEX;
@@ -69,25 +68,15 @@ class DTM {
         this.isTransmitting = false;
         this.isReceiving = false;
         this.timedOut = false;
-        this.listeners = [];
     }
 
     log(message) {
-        if (this.logger !== undefined) {
-            this.logger.info(`DTM: ${message}`);
-        }
+        this.emit('log', { message: `DTM: ${message}` });
     }
 
     callback(event) {
-        this.listeners.forEach(listener => {
-            listener(event);
-        });
+        this.emit('update', event);
     }
-
-    addListener(func) {
-        this.listeners.push(func);
-    }
-
 
     startTimeoutEvent(rxtxFlag, timeout) {
         let timeoutEvent;
