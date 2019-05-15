@@ -37,7 +37,7 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
-import EventEmitter from 'Events';
+import EventEmitter from 'events';
 import {
     DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_EVENT,
 } from './DTM_transport';
