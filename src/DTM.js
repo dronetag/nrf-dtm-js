@@ -125,6 +125,7 @@ class DTM extends EventEmitter {
     endEventDataReceived() {
         return new Promise(done => {
             this.onEndEvent = (success, received) => {
+                this.onEndEvent = null;
                 done({ success, received });
             };
         });
