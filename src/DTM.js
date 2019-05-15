@@ -50,6 +50,12 @@ function channelToFrequency(channel) {
 }
 
 function reportSuccess(report) {
+    if (report === undefined
+        || report === null
+        || typeof report !== 'object'
+        || report.length !== 2) {
+        return false;
+    }
     return (report[0] & 0x01) === 0;
 }
 
