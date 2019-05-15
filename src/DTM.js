@@ -514,7 +514,7 @@ class DTM extends EventEmitter {
             // Stop previous transmission
         }
         this.isReceiving = false;
-        const packetsReceivedForChannel = new Array(channelHigh - channelLow + 1).fill(0);
+        const packetsReceivedForChannel = new Array(40).fill(0);
         this.timeoutEvent = this.startTimeoutEvent(() => this.isReceiving, timeout);
         let currentChannelIdx = 0;
         do {
@@ -558,7 +558,7 @@ class DTM extends EventEmitter {
             this.endTimeoutEvent(sweepTimeoutEvent);
 
             if (status.success) {
-                packetsReceivedForChannel[currentChannelIdx] += status.received;
+                packetsReceivedForChannel[channelLow + currentChannelIdx] += status.received;
             } else {
                 this.endTimeoutEvent(this.timeoutEvent);
                 return {
