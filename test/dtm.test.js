@@ -43,10 +43,6 @@ const DTM = require('../dist/nrf-dtm');
 const dtm = new DTM.DTM('COM31');
 const dtmReceiver = new DTM.DTM('COM27');
 
-dtm.addListener(evt => {});
-dtmReceiver.addListener(evt => {});
-
-
 describe('Command test', () => {
     it('Setup command should be [\'0x00\', \'0x00\']', () => {
         expect(dtm.dtmTransport.createSetupCMD()).toEqual(Buffer.from(['0x00', '0x00']));
@@ -138,21 +134,14 @@ describe('Setup test', () => {
         expect(await dtm.setTxPower(-41)).toEqual(Buffer.from(['0x00', '0x01']));
     });
 
-/* This test will make other test fail.
-    it('Select timer', async () => {
+    it.skip('Select timer', async () => {
         expect(await dtm.setupReset()).toEqual(Buffer.from(['0x00', '0x00']));
         expect(await dtm.selectTimer(0)).toEqual(Buffer.from(['0x00', '0x00']));
         expect(await dtm.selectTimer(1)).toEqual(Buffer.from(['0x00', '0x00']));
+        expect(await dtm.selectTimer(2)).toEqual(Buffer.from(['0x00', '0x00']));
+    });
 
-            //Select timer 2 doesn't return. Test will time out. ->
-
-            //expect(await dtm.selectTimer(2)).toEqual(Buffer.from(['0x00', '0x00']));
-
-    });*/
-
-
-/*
-    it('Read TXRX', async () => {
+    it.skip('Read TXRX', async () => {
         const readSupportedRxTx = async param => {
             const buffer = await dtm.setupReadSupportedRxTx(param)
             buffer[0] &= 0x01; // LE_Test_Status_Event
@@ -161,7 +150,6 @@ describe('Setup test', () => {
         };
         expect(await readSupportedRxTx(dtm.DTM_PARAMETER.SUPPORTED_MAX_TX_TIME)).toEqual(Buffer.from(['0x00', '0x00']));
     });
-*/
 });
 
 
