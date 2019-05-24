@@ -1,5 +1,6 @@
 import SerialPort from 'serialport';
 import Debug from 'debug';
+import EventEmitter from 'events';
 
 // 2 bits
 const DTM_CMD = {
@@ -74,10 +75,17 @@ const DTM_CMD_FORMAT = cmd => {
 
 const debug = Debug('dtm');
 
-class DTMTransport {
+
+class DTMTransport extends EventEmitter {
     constructor(comName) {
+        super();
         this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
+        this.waitForOpen = null;
         this.addListeners();
+    }
+
+    log(message) {
+        this.emit('log', { message: `DTM Transport: ${message}` });
     }
 
     createCMD(cmdType, arg2, arg3, arg4) {
@@ -135,7 +143,7 @@ class DTMTransport {
     }
 
     open() {
-        return new Promise(res => {
+        this.waitForOpen = new Promise(res => {
             this.port.open(err => {
                 if (err && (err.message.includes('Error: Port is already open') || err.message.includes('Error: Port is opening'))) {
                     throw err;
@@ -151,6 +159,7 @@ class DTMTransport {
                 if (err) {
                     throw err;
                 }
+                this.waitForOpen = null;
                 res();
             });
         });
@@ -206,16 +215,20 @@ class DTMTransport {
 
     sendCMD(cmd) {
         return new Promise(async res => {
-            await this.open();
+            if (!this.waitForOpen) {
+                this.open();
+            }
+            await this.waitForOpen;
             this.port.write(cmd);
+            const responseTimeout = setTimeout(() => {
+                this.callback = undefined;
+                res();
+            }, 1000);
+
             this.callback = data => {
                 this.callback = undefined;
-                const whenPortIsClosed = () => {
-                    this.port.removeListener('close', whenPortIsClosed);
-                    res(data);
-                };
-                this.port.on('close', whenPortIsClosed);
-                this.close();
+                clearTimeout(responseTimeout);
+                res(data);
                 debug(data);
             };
         });

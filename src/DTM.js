@@ -44,6 +44,7 @@ import {
 import { DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING } from './DTM_strings';
 
 /* eslint-disable no-await-in-loop */
+/* eslint-disable class-methods-use-this */
 
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
@@ -390,9 +391,20 @@ class DTM extends EventEmitter {
             await this.setupModulation();
             await this.setupPhy();
 
+            if (this.timedOut) {
+                // eslint-disable-next-line
+                continue;
+            }
+
             const cmd = this.carrierTestCMD(frequency, length, bitpattern);
             const endEventDataReceivedEvt = this.endEventDataReceived();
-            const response = await this.dtmTransport.sendCMD(cmd);
+            const sendCMDPromise = this.dtmTransport.sendCMD(cmd);
+            if (this.timedOut) {
+                // eslint-disable-next-line
+                continue;
+            }
+
+            const response = await sendCMDPromise;
             this.isTransmitting = true;
 
             if (!reportSuccess(response)) {
@@ -526,10 +538,19 @@ class DTM extends EventEmitter {
             await this.selectTimer();
             await this.setupModulation();
             await this.setupPhy();
+            if (this.timedOut) {
+                // eslint-disable-next-line
+                continue;
+            }
 
             const cmd = this.dtmTransport.createReceiverCMD(frequency);
             const endEventDataReceivedEvt = this.endEventDataReceived();
             const responseEvent = this.dtmTransport.sendCMD(cmd);
+
+            if (this.timedOut) {
+                // eslint-disable-next-line
+                continue;
+            }
             const response = await responseEvent;
             this.isReceiving = true;
 
