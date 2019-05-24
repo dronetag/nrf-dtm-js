@@ -167,9 +167,9 @@ class DTM extends EventEmitter {
     /**
      * Set TX power for transmissions
      *
-     * @param {DTM_TX} dbm signal strength [-40dbm, +8dbm]
+     * @param {number} dbm signal strength [-40dbm, +8dbm]
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setTxPower(dbm = this.dbmPayload) {
         this.dbmPayload = dbm;
@@ -182,9 +182,9 @@ class DTM extends EventEmitter {
     /**
      * Select timer to use
      *
-     * @param {timer} timer to use
+     * @param {number} timer to use
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async selectTimer(timer = this.selectedTimer) {
         this.selectedTimer = timer;
@@ -196,7 +196,7 @@ class DTM extends EventEmitter {
     /**
      * Run setup reset command
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupReset() {
         const cmd = this.dtmTransport.createSetupCMD(
@@ -211,9 +211,9 @@ class DTM extends EventEmitter {
     /**
      * Setup packet length
      *
-     * @param {DTM_LENGTH} length of transmit packets
+     * @param {number} length of transmit packets
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupLength(length = this.lengthPayload) {
         this.lengthPayload = length;
@@ -230,10 +230,10 @@ class DTM extends EventEmitter {
     /**
      * Setup physical layer (PHY)
      *
-     * @param {DTM_PHY} phy setting selected [PHY_LE_1M, PHY_LE_2M,
+     * @param {number} phy setting selected [PHY_LE_1M, PHY_LE_2M,
       PHY_LE_CODED_S2, PHY_LE_CODED_S8]
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupPhy(phy = this.phyPayload) {
         this.phyPayload = phy;
@@ -249,10 +249,10 @@ class DTM extends EventEmitter {
     /**
      * Setup modulation type
      *
-     * @param {DTM_MODULATION} modulation setting selected [STANDARD_MODULATION_INDEX,
+     * @param {number} modulation setting selected [STANDARD_MODULATION_INDEX,
      STABLE_MODULATION_INDEX]
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupModulation(modulation = this.modulationPayload) {
         this.modulationPayload = modulation;
@@ -268,7 +268,7 @@ class DTM extends EventEmitter {
     /**
      * Read device features
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupReadFeatures() {
         const cmd = this.dtmTransport.createSetupCMD(
@@ -283,13 +283,13 @@ class DTM extends EventEmitter {
     /**
      * Read supported max Tx/Rx
      *
-     * @param {DTM_SUPPORTED_RXTX} parameter is the type of information to read [
+     * @param {number} parameter is the type of information to read [
      SUPPORTED_MAX_TX_OCTETS,
      SUPPORTED_MAX_TX_TIME,
      SUPPORTED_MAX_RX_OCTETS,
      SUPPORTED_MAX_RX_TIME]
      *
-     * @returns {response} response from device
+     * @returns {object} response from device
      */
     async setupReadSupportedRxTx(parameter) {
         const cmd = this.dtmTransport.createSetupCMD(
@@ -304,12 +304,12 @@ class DTM extends EventEmitter {
     /**
      * Run DTM transmitter test using a single channel
      *
-     * @param {DTM_PKT} bitpattern to use
-     * @param {DTM_LENGTH} length in bytes of transmit packets
-     * @param {DTM_CHANNEL} channel to use for transmission
-     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
+     * @param {number} channel to use for transmission
+     * @param {number} timeout of test in milliseconds. 0 disables timeout.
      *
-     * @returns {status} object containing success state and number of received packets
+     * @returns {object} object containing success state and number of received packets
      */
     async singleChannelTransmitterTest(bitpattern, length, channel, timeout = 0) {
         this.callback({
@@ -349,19 +349,19 @@ class DTM extends EventEmitter {
     /**
      * Run DTM transmitter test using a range of channels
      *
-     * @param {DTM_PKT} bitpattern to use
-     * @param {DTM_LENGTH} length in bytes of transmit packets
-     * @param {DTM_CHANNEL_LOW} channelLow is the fist channel in the range
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
+     * @param {number} channelLow is the fist channel in the range
       to use for sweep transmission.
-     * @param {DTM_CHANNEL_HIGH} channelHigh is the last channel in the range
+     * @param {number} channelHigh is the last channel in the range
       to use for sweep transmission.
-     * @param {DTM_SWEEP_TIME} sweepTime is the time in milliseconds before
+     * @param {number} sweepTime is the time in milliseconds before
       moving on to the next channel in the sweep range.
-     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
-     * @param {RANDOM_PATTERN} randomPattern is true for random channel sweep
+     * @param {number} timeout of test in milliseconds. 0 disables timeout.
+     * @param {boolean} randomPattern is true for random channel sweep
       pattern, false for sequential channel sweep.
      *
-     * @returns {status} object containing success state and number of received packets
+     * @returns {object} object containing success state and number of received packets
      */
     async sweepTransmitterTest(bitpattern,
         length,
@@ -443,10 +443,10 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a single channel
      *
-     * @param {DTM_CHANNEL} channel to use for transmission
-     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
+     * @param {number} channel to use for transmission
+     * @param {number} timeout of test in milliseconds. 0 disables timeout.
      *
-     * @returns {status} object containing success state and number of received packets
+     * @returns {object} object containing success state and number of received packets
      */
     async singleChannelReceiverTest(channel, timeout = 0) {
         this.callback({
@@ -489,17 +489,17 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a range of channels
      *
-     * @param {DTM_CHANNEL_LOW} channelLow is the fist channel in
+     * @param {number} channelLow is the fist channel in
       the range to use for sweep transmission.
-     * @param {DTM_CHANNEL_HIGH} channelHigh is the last channel in the range
+     * @param {number} channelHigh is the last channel in the range
       to use for sweep transmission.
-     * @param {DTM_SWEEP_TIME} sweepTime is the time in milliseconds before
+     * @param {number} sweepTime is the time in milliseconds before
       moving on to the next channel in the sweep range.
-     * @param {TIMEOUT} timeout of test in milliseconds. 0 disables timeout.
-     * @param {RANDOM_PATTERN} randomPattern is true for random channel sweep
+     * @param {number} timeout of test in milliseconds. 0 disables timeout.
+     * @param {boolean} randomPattern is true for random channel sweep
       pattern, false for sequential channel sweep.
      *
-     * @returns {status} object containing success state and number of received packets
+     * @returns {object} object containing success state and number of received packets
      */
     async sweepReceiverTest(
         channelLow,
