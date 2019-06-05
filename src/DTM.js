@@ -384,12 +384,6 @@ class DTM extends EventEmitter {
             const frequency = channelToFrequency(channelLow + currentChannelIdx);
             this.sweepTimedOut = false;
             this.isTransmitting = false;
-            await this.setupReset();
-            await this.selectTimer();
-            await this.setTxPower();
-            await this.setupLength();
-            await this.setupModulation();
-            await this.setupPhy();
 
             if (this.timedOut) {
                 // eslint-disable-next-line
@@ -534,10 +528,6 @@ class DTM extends EventEmitter {
             const frequency = channelToFrequency(channelLow + currentChannelIdx);
             this.sweepTimedOut = false;
             this.isReceiving = false;
-            await this.setupReset();
-            await this.selectTimer();
-            await this.setupModulation();
-            await this.setupPhy();
             if (this.timedOut) {
                 // eslint-disable-next-line
                 continue;
