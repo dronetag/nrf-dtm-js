@@ -214,7 +214,7 @@ describe('Transmit and receive tests', () => {
         expect(recv.received).toBeGreaterThan(0);
     });
 
-    it('Non overlapping sequential sweeps returns no packets.', async () => {
+    it.skip('Non overlapping sequential sweeps returns no packets.', async () => {
         await dtm.setupReset();
         await dtmReceiver.setupReset();
         await dtm.setupPhy(DTM.DTM.DTM_PARAMETER.PHY_LE_1M);
