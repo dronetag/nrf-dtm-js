@@ -1,7 +1,8 @@
 {
+    "parser": "babel-eslint",
     "extends": [
         "eslint:recommended",
-        "airbnb-base"
+        "airbnb"
     ],
     "rules": {
         "indent": [
@@ -11,6 +12,16 @@
                 "SwitchCase": 1
             }
         ],
+        "react/jsx-indent": [
+            "error",
+            4
+        ],
+        "react/jsx-indent-props": [
+            "error",
+            4
+        ],
+        "react/jsx-one-expression-per-line": 0,
+        "react-hooks/rules-of-hooks": "error",
         "quotes": [
             "error",
             "single"
@@ -26,22 +37,34 @@
         ],
         "strict": "off",
         "no-console": "off",
-        "no-bitwise": "off",
-        "valid-jsdoc": 2,
+        "valid-jsdoc": [2, {
+            "prefer": {
+                "return": "returns"
+            }
+        }],
         "import/no-extraneous-dependencies": 0,
+        "import/no-unresolved": [
+            "error",
+            {
+                "ignore": [
+                    "nrfconnect/.*",
+                    "pc-ble-driver-js",
+                    "pc-nrfjprog-js",
+                    "serialport",
+                    "usb",
+                    "nrf-device-setup",
+                    "electron"
+                ]
+            }
+        ],
         "import/extensions": ["off"],
         "no-undef": 1,
-        "no-unused-vars": 1,
-        "comma-dangle": ["error", {
-            "arrays": "always-multiline",
-            "objects": "always-multiline",
-            "imports": "always-multiline",
-            "exports": "always-multiline",
-            "functions": "ignore"
-        }]
+        "no-unused-vars": 1
     },
     "plugins": [
-        "import"
+        "react",
+        "import",
+        "react-hooks"
     ],
     "env": {
         "es6": true,

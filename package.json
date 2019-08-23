@@ -11,7 +11,8 @@
   "scripts": {
     "rollup": "rollup -c rollup.config.js",
     "test": "rollup -c rollup.config.js && jest --detectOpenHandles --runInBand",
-    "lint": "eslint src/"
+    "lint-init": "nrfconnect-scripts lint-init",
+    "lint": "nrfconnect-scripts lint src"
   },
   "dependencies": {
     "inquirer": "^6.2.0",
