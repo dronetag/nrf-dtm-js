@@ -9,7 +9,7 @@
   "author": "",
   "license": "Propietary",
   "scripts": {
-    "rollup": "rollup -c rollup.config.js",
+    "rollup": "npm run lint && rollup -c rollup.config.js",
     "test": "rollup -c rollup.config.js && jest --detectOpenHandles --runInBand",
     "lint-init": "nrfconnect-scripts lint-init",
     "lint": "nrfconnect-scripts lint src"
