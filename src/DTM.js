@@ -372,13 +372,15 @@ class DTM extends EventEmitter {
      *
      * @returns {object} object containing success state and number of received packets
      */
-    async sweepTransmitterTest(bitpattern,
+    async sweepTransmitterTest(
+        bitpattern,
         length,
         channelLow,
         channelHigh,
         sweepTime = 1000,
         timeout = 0,
-        randomPattern = false) {
+        randomPattern = false,
+    ) {
         this.callback({
             type: 'reset',
         });
@@ -457,12 +459,19 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a single channel
      *
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
      * @param {number} channel to use for transmission
      * @param {number} timeout of test in milliseconds. 0 disables timeout.
      *
      * @returns {object} object containing success state and number of received packets
      */
-    async singleChannelReceiverTest(channel, timeout = 0) {
+    async singleChannelReceiverTest(
+        bitpattern,
+        length,
+        channel,
+        timeout = 0,
+    ) {
         this.callback({
             type: 'reset',
         });
@@ -475,7 +484,7 @@ class DTM extends EventEmitter {
         this.sweepTimedOut = false;
 
         const frequency = channelToFrequency(channel);
-        const cmd = this.dtmTransport.createReceiverCMD(frequency);
+        const cmd = this.dtmTransport.createReceiverCMD(frequency, length, bitpattern);
         const endEventDataReceivedEvt = this.endEventDataReceived();
         const response = await this.dtmTransport.sendCMD(cmd);
 
@@ -503,6 +512,8 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a range of channels
      *
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
      * @param {number} channelLow is the fist channel in
       the range to use for sweep transmission.
      * @param {number} channelHigh is the last channel in the range
@@ -516,6 +527,8 @@ class DTM extends EventEmitter {
      * @returns {object} object containing success state and number of received packets
      */
     async sweepReceiverTest(
+        bitpattern,
+        length,
         channelLow,
         channelHigh,
         sweepTime = 1000,
@@ -541,7 +554,7 @@ class DTM extends EventEmitter {
                 continue;
             }
 
-            const cmd = this.dtmTransport.createReceiverCMD(frequency);
+            const cmd = this.dtmTransport.createReceiverCMD(frequency, length, bitpattern);
             const endEventDataReceivedEvt = this.endEventDataReceived();
             const responseEvent = this.dtmTransport.sendCMD(cmd);
 

@@ -233,10 +233,23 @@ class DTMTransport extends EventEmitter {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 
-    createReceiverCMD(frequency = 2402) {
+    /**
+     * Create receiver command
+     *
+     * @param {DTM_FREQUENCY} frequency the frequency to set
+     * @param {DTM_LENGTH} length the length to set
+     * @param {DTM_PKT} pkt the pkt to set
+     *
+     * @returns {createCMD} created command
+     */
+    createReceiverCMD(
+        frequency = 2402,
+        length = 0,
+        pkt = DTM_PKT.DEFAULT,
+    ) {
         const dtmFrequency = DTM_FREQUENCY(frequency);
-        const dtmLength = toBitString(0);
-        const dtmPkt = toBitString(DTM_PKT.DEFAULT);
+        const dtmLength = toBitString(length);
+        const dtmPkt = toBitString(pkt, 2);
         return this.createCMD(DTM_CMD.RECEIVER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 
