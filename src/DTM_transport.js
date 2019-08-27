@@ -1,6 +1,47 @@
-import SerialPort from 'serialport';
-import Debug from 'debug';
+/**
+ * copyright (c) 2015 - 2018, Nordic Semiconductor ASA
+ *
+ * all rights reserved.
+ *
+ * redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. redistributions in binary form, except as embedded into a nordic
+ *    semiconductor asa integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ *
+ * 3. neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * 4. this software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ *
+ * 5. any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ *
+ * this software is provided by Nordic Semiconductor ASA "as is" and any express
+ * or implied warranties, including, but not limited to, the implied warranties
+ * of merchantability, noninfringement, and fitness for a particular purpose are
+ * disclaimed. in no event shall Nordic Semiconductor ASA or contributors be
+ * liable for any direct, indirect, incidental, special, exemplary, or
+ * consequential damages (including, but not limited to, procurement of substitute
+ * goods or services; loss of use, data, or profits; or business interruption)
+ * however caused and on any theory of liability, whether in contract, strict
+ * liability, or tort (including negligence or otherwise) arising in any way out
+ * of the use of this software, even if advised of the possibility of such damage.
+ *
+ */
+
 import EventEmitter from 'events';
+
+import Debug from 'debug';
+import SerialPort from 'serialport';
 
 // 2 bits
 const DTM_CMD = {
@@ -105,7 +146,7 @@ class DTMTransport extends EventEmitter {
     createSetupCMD(
         control = DTM_CONTROL.RESET,
         parameter = DTM_PARAMETER.DEFAULT,
-        dc = DTM_DC.DEFAULT
+        dc = DTM_DC.DEFAULT,
     ) {
         const controlBits = toBitString(control);
         const parameterBits = toBitString(parameter);
@@ -192,10 +233,23 @@ class DTMTransport extends EventEmitter {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 
-    createReceiverCMD(frequency = 2402) {
+    /**
+     * Create receiver command
+     *
+     * @param {DTM_FREQUENCY} frequency the frequency to set
+     * @param {DTM_LENGTH} length the length to set
+     * @param {DTM_PKT} pkt the pkt to set
+     *
+     * @returns {createCMD} created command
+     */
+    createReceiverCMD(
+        frequency = 2402,
+        length = 0,
+        pkt = DTM_PKT.DEFAULT,
+    ) {
         const dtmFrequency = DTM_FREQUENCY(frequency);
-        const dtmLength = toBitString(0);
-        const dtmPkt = toBitString(DTM_PKT.DEFAULT);
+        const dtmLength = toBitString(length);
+        const dtmPkt = toBitString(pkt, 2);
         return this.createCMD(DTM_CMD.RECEIVER_TEST + dtmFrequency + dtmLength + dtmPkt);
     }
 

@@ -37,14 +37,22 @@
  * of the use of this software, even if advised of the possibility of such damage.
  *
  */
-import EventEmitter from 'events';
-import {
-    DTMTransport, DTM_CONTROL, DTM_DC, DTM_PARAMETER, DTM_PKT, DTM_EVENT,
-} from './DTM_transport';
-import { DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING } from './DTM_strings';
 
-/* eslint-disable no-await-in-loop */
 /* eslint-disable class-methods-use-this */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-bitwise */
+
+import EventEmitter from 'events';
+
+import { DTM_MODULATION_STRING, DTM_PHY_STRING, DTM_PKT_STRING } from './DTM_strings';
+import {
+    DTMTransport,
+    DTM_CONTROL,
+    DTM_DC,
+    DTM_EVENT,
+    DTM_PARAMETER,
+    DTM_PKT,
+} from './DTM_transport';
 
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
@@ -203,7 +211,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.RESET,
             DTM_PARAMETER.DEFAULT,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -222,7 +230,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.ENABLE_LENGTH,
             lengthBits,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -241,7 +249,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.PHY,
             phy,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -260,7 +268,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.MODULATION,
             modulation,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -275,7 +283,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.FEATURES,
             0,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -296,7 +304,7 @@ class DTM extends EventEmitter {
         const cmd = this.dtmTransport.createSetupCMD(
             DTM_CONTROL.TXRX,
             parameter,
-            DTM_DC.DEFAULT
+            DTM_DC.DEFAULT,
         );
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
@@ -364,13 +372,15 @@ class DTM extends EventEmitter {
      *
      * @returns {object} object containing success state and number of received packets
      */
-    async sweepTransmitterTest(bitpattern,
+    async sweepTransmitterTest(
+        bitpattern,
         length,
         channelLow,
         channelHigh,
         sweepTime = 1000,
         timeout = 0,
-        randomPattern = false) {
+        randomPattern = false,
+    ) {
         this.callback({
             type: 'reset',
         });
@@ -449,12 +459,19 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a single channel
      *
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
      * @param {number} channel to use for transmission
      * @param {number} timeout of test in milliseconds. 0 disables timeout.
      *
      * @returns {object} object containing success state and number of received packets
      */
-    async singleChannelReceiverTest(channel, timeout = 0) {
+    async singleChannelReceiverTest(
+        bitpattern,
+        length,
+        channel,
+        timeout = 0,
+    ) {
         this.callback({
             type: 'reset',
         });
@@ -467,7 +484,7 @@ class DTM extends EventEmitter {
         this.sweepTimedOut = false;
 
         const frequency = channelToFrequency(channel);
-        const cmd = this.dtmTransport.createReceiverCMD(frequency);
+        const cmd = this.dtmTransport.createReceiverCMD(frequency, length, bitpattern);
         const endEventDataReceivedEvt = this.endEventDataReceived();
         const response = await this.dtmTransport.sendCMD(cmd);
 
@@ -495,6 +512,8 @@ class DTM extends EventEmitter {
     /**
      * Run DTM receiver test using a range of channels
      *
+     * @param {number} bitpattern to use
+     * @param {number} length in bytes of transmit packets
      * @param {number} channelLow is the fist channel in
       the range to use for sweep transmission.
      * @param {number} channelHigh is the last channel in the range
@@ -508,11 +527,13 @@ class DTM extends EventEmitter {
      * @returns {object} object containing success state and number of received packets
      */
     async sweepReceiverTest(
+        bitpattern,
+        length,
         channelLow,
         channelHigh,
         sweepTime = 1000,
         timeout = 0,
-        randomPattern = false
+        randomPattern = false,
     ) {
         this.callback({
             type: 'reset',
@@ -533,7 +554,7 @@ class DTM extends EventEmitter {
                 continue;
             }
 
-            const cmd = this.dtmTransport.createReceiverCMD(frequency);
+            const cmd = this.dtmTransport.createReceiverCMD(frequency, length, bitpattern);
             const endEventDataReceivedEvt = this.endEventDataReceived();
             const responseEvent = this.dtmTransport.sendCMD(cmd);
 
@@ -559,7 +580,8 @@ class DTM extends EventEmitter {
             });
 
             const sweepTimeoutEvent = this.startSweepTimeoutEvent(
-                () => this.isReceiving, sweepTime
+                () => this.isReceiving,
+                sweepTime,
             );
             this.sweepTimedOut = false;
             if (this.timedOut) {
@@ -623,5 +645,8 @@ DTM.DTM_CONTROL = DTM_CONTROL;
 DTM.DTM_PARAMETER = DTM_PARAMETER;
 
 export {
-    DTM, DTM_PHY_STRING, DTM_PKT_STRING, DTM_MODULATION_STRING,
+    DTM,
+    DTM_PHY_STRING,
+    DTM_PKT_STRING,
+    DTM_MODULATION_STRING,
 };

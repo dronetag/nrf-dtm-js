@@ -4,12 +4,21 @@ import pkg from './package.json';
 export default [
     {
         input: 'src/index.js',
-        external: ['fs', 'debug', 'serialport'],
+        external: [
+            'debug',
+            'events',
+            'fs',
+            'serialport',
+        ],
         output: [
-            { file: pkg.main, format: 'cjs', sourcemap: true },
+            {
+                file: pkg.main,
+                format: 'cjs',
+                sourcemap: true,
+            },
         ],
         plugins: [
             eslint(),
-        ]
-    }
+        ],
+    },
 ];
