@@ -72,6 +72,7 @@ class DTM extends EventEmitter {
     constructor(comName) {
         super();
         this.dtmTransport = new DTMTransport(comName);
+        this.dtmTransport.on('log', message => this.emit('transport', message));
         // Setting default paramters
         this.lengthPayload = 1;
         this.modulationPayload = DTM.DTM_PARAMETER.STANDARD_MODULATION_INDEX;

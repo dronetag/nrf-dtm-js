@@ -38,10 +38,14 @@
  *
  */
 
+/* eslint-disable class-methods-use-this */
+
 import EventEmitter from 'events';
 
 import Debug from 'debug';
 import SerialPort from 'serialport';
+
+const debug = Debug('dtm');
 
 // 2 bits
 const DTM_CMD = {
@@ -104,18 +108,19 @@ const DTM_EVENT = {
     LE_PACKET_REPORT_EVENT: 1,
 };
 
-function toBitString(data, length = 6) {
-    return data.toString(2).padStart(length, '0');
-}
-
 const DTM_CMD_FORMAT = cmd => {
     const firstByte = parseInt(cmd.substring(0, 8), 2).toString(16).padStart(2, '0');
     const secondByte = parseInt(cmd.substring(8, 16), 2).toString(16).padStart(2, '0');
     return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
 };
 
-const debug = Debug('dtm');
 
+const toBitString = (data, length = 6) => data.toString(2).padStart(length, '0');
+
+const cmdToHex = cmd => {
+    const cmdString = cmd.toString('HEX');
+    return `0x${cmdString.substring(0, 2)} 0x${cmdString.substring(2, 4)}`;
+};
 
 class DTMTransport extends EventEmitter {
     constructor(comName) {
@@ -128,31 +133,6 @@ class DTMTransport extends EventEmitter {
     log(message) {
         this.emit('log', { message: `DTM Transport: ${message}` });
     }
-
-    createCMD(cmdType, arg2, arg3, arg4) {
-        debug(this);
-        return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
-    }
-
-    /**
-     * Create setup command
-     *
-     * @param {DTM_CONTROL} control the control to set
-     * @param {DTM_PARAMETER} parameter the parameter to set
-     * @param {DTM_DC} dc the dc to set
-     *
-     * @returns {createCMD} created command
-     */
-    createSetupCMD(
-        control = DTM_CONTROL.RESET,
-        parameter = DTM_PARAMETER.DEFAULT,
-        dc = DTM_DC.DEFAULT,
-    ) {
-        const controlBits = toBitString(control);
-        const parameterBits = toBitString(parameter);
-        return this.createCMD(DTM_CMD.TEST_SETUP + controlBits + parameterBits + dc);
-    }
-
 
     addListeners() {
         this.port.on('data', data => {
@@ -184,29 +164,73 @@ class DTMTransport extends EventEmitter {
     }
 
     open() {
+        this.log('Open serialport');
         this.waitForOpen = new Promise(res => {
             this.port.open(err => {
                 if (err && (err.message.includes('Error: Port is already open') || err.message.includes('Error: Port is opening'))) {
+                    this.log(`Failed to open serialport with error: ${err}`);
                     throw err;
                 }
+                this.log('Succeeded to open serialport');
                 res();
             });
         });
     }
 
     close() {
+        this.log('Close serialport');
         return new Promise(res => {
             this.port.close(err => {
                 if (err) {
+                    this.log(`Failed to close serialport with error: ${err}`);
                     throw err;
                 }
+                this.log('Succeeded to close serialport');
                 this.waitForOpen = null;
                 res();
             });
         });
     }
 
+    /**
+     * Create command
+     *
+     * @param {string}cmdType the type of command from 1st to 2nd bit
+     * @param {string}arg2 the parameter from 3nd to 8th bit
+     * @param {string}arg3 the parameter from 9th to 14 bit
+     * @param {string}arg4 the parameter from 15th to 16th bit
+     *
+     * @returns {DTM_CMD_FORMAT} formatted command
+     */
+    createCMD(cmdType, arg2, arg3, arg4) {
+        debug(`Create CMD with type ${cmdType}`);
+        return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
+    }
+
+    /**
+     * Create setup command
+     *
+     * @param {DTM_CONTROL} control the control to set
+     * @param {DTM_PARAMETER} parameter the parameter to set
+     * @param {DTM_DC} dc the dc to set
+     *
+     * @returns {createCMD} created command
+     */
+    createSetupCMD(
+        control = DTM_CONTROL.RESET,
+        parameter = DTM_PARAMETER.DEFAULT,
+        dc = DTM_DC.DEFAULT,
+    ) {
+        this.log(`Create setup CMD with control: ${control}`);
+        this.log(`Create setup CMD with parameter: ${parameter}`);
+        this.log(`Create setup CMD with dc type: ${dc}`);
+        const controlBits = toBitString(control);
+        const parameterBits = toBitString(parameter);
+        return this.createCMD(DTM_CMD.TEST_SETUP + controlBits + parameterBits + dc);
+    }
+
     createEndCMD() {
+        this.log('Create test end CMD');
         return this.createCMD(DTM_CMD.TEST_END
             + toBitString(DTM_CONTROL.END)
             + toBitString(DTM_PARAMETER.DEFAULT)
@@ -227,6 +251,9 @@ class DTMTransport extends EventEmitter {
         length = 0,
         pkt = DTM_PKT.DEFAULT,
     ) {
+        this.log(`Create transmitter CMD with frequency: ${frequency}`);
+        this.log(`Create transmitter CMD with length: ${length}`);
+        this.log(`Create transmitter CMD with packet type: ${pkt}`);
         const dtmFrequency = DTM_FREQUENCY(frequency);
         const dtmLength = toBitString(length);
         const dtmPkt = toBitString(pkt, 2);
@@ -247,6 +274,9 @@ class DTMTransport extends EventEmitter {
         length = 0,
         pkt = DTM_PKT.DEFAULT,
     ) {
+        this.log(`Create receiver CMD with frequency: ${frequency}`);
+        this.log(`Create receiver CMD with length: ${length}`);
+        this.log(`Create receiver CMD with packet type: ${pkt}`);
         const dtmFrequency = DTM_FREQUENCY(frequency);
         const dtmLength = toBitString(length);
         const dtmPkt = toBitString(pkt, 2);
@@ -254,6 +284,7 @@ class DTMTransport extends EventEmitter {
     }
 
     createTxPowerCMD(dbm) {
+        this.log(`Create tx power CMD: ${dbm}`);
         const dtmDbm = toBitString(dbm);
         const dtmLength = toBitString(2);
         const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
@@ -261,6 +292,7 @@ class DTMTransport extends EventEmitter {
     }
 
     createSelectTimerCMD(value) {
+        this.log(`Create select timer CMD: ${value}`);
         const dtmTimer = toBitString(value);
         const dtmLength = toBitString(3);
         const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
@@ -273,7 +305,7 @@ class DTMTransport extends EventEmitter {
                 this.open();
             }
             await this.waitForOpen;
-            this.log(`Sending data: ${cmd}`);
+            this.log(`Sending data: ${cmdToHex(cmd)}`);
             this.port.write(cmd);
             const responseTimeout = setTimeout(() => {
                 this.callback = undefined;
@@ -283,7 +315,7 @@ class DTMTransport extends EventEmitter {
             this.callback = data => {
                 this.callback = undefined;
                 clearTimeout(responseTimeout);
-                this.log(`Receiving data: ${cmd}`);
+                this.log(`Receiving data: ${cmdToHex(data)}`);
                 debug(data);
                 res(data);
             };
