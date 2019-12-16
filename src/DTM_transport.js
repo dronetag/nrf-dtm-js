@@ -273,6 +273,7 @@ class DTMTransport extends EventEmitter {
                 this.open();
             }
             await this.waitForOpen;
+            this.log(`Sending data: ${cmd}`);
             this.port.write(cmd);
             const responseTimeout = setTimeout(() => {
                 this.callback = undefined;
@@ -282,8 +283,9 @@ class DTMTransport extends EventEmitter {
             this.callback = data => {
                 this.callback = undefined;
                 clearTimeout(responseTimeout);
-                res(data);
+                this.log(`Receiving data: ${cmd}`);
                 debug(data);
+                res(data);
             };
         });
     }
