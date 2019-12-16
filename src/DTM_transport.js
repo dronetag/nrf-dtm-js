@@ -42,10 +42,7 @@
 
 import EventEmitter from 'events';
 
-import Debug from 'debug';
 import SerialPort from 'serialport';
-
-const debug = Debug('dtm');
 
 // 2 bits
 const DTM_CMD = {
@@ -114,11 +111,10 @@ const DTM_CMD_FORMAT = cmd => {
     return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
 };
 
-
 const toBitString = (data, length = 6) => data.toString(2).padStart(length, '0');
 
 const cmdToHex = cmd => {
-    const cmdString = cmd.toString('HEX');
+    const cmdString = cmd.toString('HEX').toUpperCase();
     return `0x${cmdString.substring(0, 2)} 0x${cmdString.substring(2, 4)}`;
 };
 
@@ -136,7 +132,6 @@ class DTMTransport extends EventEmitter {
 
     addListeners() {
         this.port.on('data', data => {
-            debug(data);
             if (this.callback) {
                 if (data.length === 1) {
                     if (this.dataBuffer) {
@@ -149,22 +144,21 @@ class DTMTransport extends EventEmitter {
                 } else if (data.length === 2) {
                     this.callback(data);
                 } else {
-                    debug('Unexpected data length: ', data.length);
+                    this.log('Unexpected data length: ', data.length);
                 }
             } else {
-                debug('Unhandled data: ', data);
+                this.log('Unhandled data: ', data);
             }
         });
         this.port.on('error', error => {
-            debug(error);
+            this.log(error);
         });
         this.port.on('open', () => {
-            debug('open');
+            this.log('Serialport is opened');
         });
     }
 
     open() {
-        this.log('Open serialport');
         this.waitForOpen = new Promise(res => {
             this.port.open(err => {
                 if (err && (err.message.includes('Error: Port is already open') || err.message.includes('Error: Port is opening'))) {
@@ -203,7 +197,6 @@ class DTMTransport extends EventEmitter {
      * @returns {DTM_CMD_FORMAT} formatted command
      */
     createCMD(cmdType, arg2, arg3, arg4) {
-        debug(`Create CMD with type ${cmdType}`);
         return DTM_CMD_FORMAT(cmdType + arg2 + arg3 + arg4);
     }
 
@@ -316,7 +309,6 @@ class DTMTransport extends EventEmitter {
                 this.callback = undefined;
                 clearTimeout(responseTimeout);
                 this.log(`Receiving data: ${cmdToHex(data)}`);
-                debug(data);
                 res(data);
             };
         });

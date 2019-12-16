@@ -44,6 +44,8 @@
 
 import EventEmitter from 'events';
 
+import Debug from 'debug';
+
 import { DTM_MODULATION_STRING, DTM_PHY_STRING, DTM_PKT_STRING } from './DTM_strings';
 import {
     DTMTransport,
@@ -53,6 +55,8 @@ import {
     DTM_PARAMETER,
     DTM_PKT,
 } from './DTM_transport';
+
+const debug = Debug('dtm');
 
 function channelToFrequency(channel) {
     return 2402 + 2 * channel;
@@ -87,6 +91,7 @@ class DTM extends EventEmitter {
     }
 
     log(message) {
+        debug(message);
         this.emit('log', { message: `DTM: ${message}` });
     }
 
