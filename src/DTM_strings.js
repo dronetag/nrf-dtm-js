@@ -49,7 +49,7 @@ const DTM_PKT_STRING = {
     0x00: 'PRBS9',
     0x01: '11110000',
     0x02: '10101010',
-    0x03: 'Constant',
+    0x03: 'Constant carrier',
 };
 
 const DTM_MODULATION_STRING = {
