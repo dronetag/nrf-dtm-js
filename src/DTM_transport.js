@@ -111,7 +111,7 @@ const DTM_CMD_FORMAT = cmd => {
     return Buffer.from([`0x${firstByte}`, `0x${secondByte}`]);
 };
 
-const toBitString = (data, length = 6) => data.toString(2).padStart(length, '0');
+const toBitString = (data, length = 6) => parseInt(data, 10).toString(2).padStart(length, '0');
 
 const cmdToHex = cmd => {
     const cmdString = cmd.toString('HEX').toUpperCase();
