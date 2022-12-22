@@ -42,7 +42,7 @@
 
 import EventEmitter from 'events';
 
-import SerialPort from 'serialport';
+import { SerialPort } from 'serialport';
 
 // 2 bits
 const DTM_CMD = {
@@ -121,7 +121,7 @@ const cmdToHex = cmd => {
 class DTMTransport extends EventEmitter {
     constructor(comName) {
         super();
-        this.port = new SerialPort(comName, { autoOpen: false, baudRate: 19200 });
+        this.port = new SerialPort({ path: comName, autoOpen: false, baudRate: 19200 });
         this.waitForOpen = null;
         this.addListeners();
     }
