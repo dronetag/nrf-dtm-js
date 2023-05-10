@@ -284,6 +284,14 @@ class DTMTransport extends EventEmitter {
         return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmDbm + dtmLength + dtmPkt);
     }
 
+    createAntennaSelectCMD(index) {
+        this.log(`Create antenna select CMD: ${index}`);
+        const dtmIndex = toBitString(index);
+        const dtmLength = toBitString(0x3F);
+        const dtmPkt = toBitString(DTM_PKT.PAYLOAD_VENDOR, 2);
+        return this.createCMD(DTM_CMD.TRANSMITTER_TEST + dtmIndex + dtmLength + dtmPkt);
+    }
+
     createSelectTimerCMD(value) {
         this.log(`Create select timer CMD: ${value}`);
         const dtmTimer = toBitString(value);

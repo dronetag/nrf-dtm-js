@@ -83,6 +83,7 @@ class DTM extends EventEmitter {
         this.phyPayload = DTM.DTM_PARAMETER.PHY_LE_1M;
         this.dbmPayload = 0;
         this.selectedTimer = 0;
+        this.antennaIndex = 0;
 
 
         this.isTransmitting = false;
@@ -190,6 +191,22 @@ class DTM extends EventEmitter {
         this.dbmPayload = dbm;
         const value = dbm & 0x3F;
         const cmd = this.dtmTransport.createTxPowerCMD(value);
+        const response = await this.dtmTransport.sendCMD(cmd);
+        return response;
+    }
+
+
+    /**
+     * Set External Antenna
+     *
+     * @param {number} index of the antenna 0 internal 1 external
+     *
+     * @returns {object} response from device
+     */
+    async setAntennaSelect(index = this.antennaIndex) {
+        this.antennaIndex = index;
+        const value = index & 0x3F;
+        const cmd = this.dtmTransport.createAntennaSelectCMD(value);
         const response = await this.dtmTransport.sendCMD(cmd);
         return response;
     }
